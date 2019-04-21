@@ -157,12 +157,31 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="bits_rev_table.h" />
+    <ClInclude Include="compr_kraken.h" />
+    <ClInclude Include="compr_leviathan.h" />
+    <ClInclude Include="compr_match_finder.h" />
+    <ClInclude Include="compr_mermaid.h" />
+    <ClInclude Include="compr_util.h" />
+    <ClInclude Include="compress.h" />
+    <ClInclude Include="compr_entropy.h" />
+    <ClInclude Include="log_lookup.h" />
+    <ClInclude Include="match_hasher.h" />
     <ClInclude Include="moo.h" />
+    <ClInclude Include="qsort.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bitknit.cpp" />
+    <ClCompile Include="compress.cpp" />
+    <ClCompile Include="compr_entropy.cpp" />
+    <ClCompile Include="compr_kraken.cpp" />
+    <ClCompile Include="compr_leviathan.cpp" />
+    <ClCompile Include="compr_match_finder.cpp" />
+    <ClCompile Include="compr_mermaid.cpp" />
+    <ClCompile Include="compr_multiarray.cpp" />
+    <ClCompile Include="compr_tans.cpp" />
     <ClCompile Include="kraken.cpp" />
     <ClCompile Include="lzna.cpp" />
     <ClCompile Include="stdafx.cpp">

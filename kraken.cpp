@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "stdafx.h"
+#include <sys/stat.h>
 
 // Header in front of each 256k block
 typedef struct KrakenHeader {
@@ -4185,13 +4186,14 @@ enum {
 bool arg_stdout, arg_force, arg_quiet, arg_dll;
 int arg_compressor = kCompressor_Kraken, arg_level = 4;
 char arg_direction;
-char *verifyfolder;
+const char *verifyfolder;
 
 int ParseCmdLine(int argc, char *argv[]) {
   int i;
   // parse command line
   for (i = 1; i < argc; i++) {
-    char *s = argv[i], c;
+    const char *s = argv[i];
+    char c;
     if (*s != '-')
       break;
     if (*++s == '-') {
@@ -4285,6 +4287,21 @@ bool Verify(const char *filename, uint8 *output, int outbytes, const char *curfi
   return true;
 }
 
+#ifndef _MSC_VER
+typedef uint64_t LARGE_INTEGER;
+void QueryPerformanceCounter(LARGE_INTEGER *a) {
+  *a = 0;
+}
+void QueryPerformanceFrequency(LARGE_INTEGER *a) {
+  *a = 1;
+}
+#define WINAPI
+typedef void* HINSTANCE;
+HINSTANCE LoadLibraryA(const char *s) { return 0; }
+void *GetProcAddress(HINSTANCE h, const char *s) { return 0; }
+#endif
+
+
 typedef int WINAPI OodLZ_CompressFunc(
   int codec, uint8 *src_buf, size_t src_len, uint8 *dst_buf, int level,
   void *opts, size_t offs, size_t unused, void *scratch, size_t scratch_size);
@@ -4317,21 +4334,27 @@ void LoadLib() {
     error("error loading", LIBNAME);
 }
 
+struct CompressOptions;
+struct LRMCascade;
+
+int CompressBlock(int codec_id, uint8 *src_in, uint8 *dst_in, int src_size, int level,
+                  const CompressOptions *compressopts, uint8 *src_window_base, LRMCascade *lrm);
+
 int main(int argc, char *argv[]) {
-  __int64 start, end, freq;
+  int64_t start, end, freq;
   int argi;
 
   if (argc < 2 || 
       (argi = ParseCmdLine(argc, argv)) < 0 || 
       argi >= argc ||  // no files
-      arg_direction != 'b' && (argc - argi) > 2 ||  // too many files
-      arg_direction == 't' && (argc - argi) != 2     // missing argument for verify
+      (arg_direction != 'b' && (argc - argi) > 2) ||  // too many files
+      (arg_direction == 't' && (argc - argi) != 2)     // missing argument for verify
       ) {
-    fprintf(stderr, "ooz v7.0\n\n"
+    fprintf(stderr, "ooz v7.1 - compressor by Rarten\n\n"
       "Usage: ooz [options] input [output]\n"
       " -c --stdout              write to stdout\n"
       " -d --decompress          decompress (default)\n"
-      " -z --compress            compress (requires oo2core_7_win64.dll)\n"
+      " -z --compress            compress\n"
       " -b                       just benchmark, don't overwrite anything\n"
       " -f                       force overwrite existing file\n"
       " --dll                    decompress with the dll\n"
@@ -4367,19 +4390,24 @@ int main(int argc, char *argv[]) {
 
     if (arg_direction == 'z') {
       // compress using the dll
-      LoadLib();
+      if (arg_dll)
+        LoadLib();
       output = new byte[input_size + 65536];
       if (!output) error("memory error", curfile);
       *(uint64*)output = input_size;
       QueryPerformanceCounter((LARGE_INTEGER*)&start);
-      outbytes = OodLZ_Compress(arg_compressor, input, input_size, output + 8, arg_level, 0, 0, 0, 0, 0);
+      if (arg_dll) {
+        outbytes = OodLZ_Compress(arg_compressor, input, input_size, output + 8, arg_level, 0, 0, 0, 0, 0);
+      } else {
+        outbytes = CompressBlock(arg_compressor, input, output + 8, input_size, arg_level, 0, 0, 0);
+      }
       if (outbytes < 0) error("compress failed", curfile);
       outbytes += 8;
       QueryPerformanceCounter((LARGE_INTEGER*)&end);
       QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
       double seconds = (double)(end - start) / freq;
       if (!arg_quiet)
-        fprintf(stderr, "%-20s: %8d => %8ld (%.2f seconds, %.2f MB/s)\n", argv[argi], input_size, outbytes, seconds, input_size * 1e-6 / seconds);
+        fprintf(stderr, "%-20s: %8d => %8d (%.2f seconds, %.2f MB/s)\n", argv[argi], input_size, outbytes, seconds, input_size * 1e-6 / seconds);
     } else {
       if (arg_dll)
         LoadLib();
@@ -4407,7 +4435,7 @@ int main(int argc, char *argv[]) {
       QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
       double seconds = (double)(end - start) / freq;
       if (!arg_quiet)
-        fprintf(stderr, "%-20s: %8d => %8lld (%.2f seconds, %.2f MB/s)\n", argv[argi], input_size, unpacked_size, seconds, unpacked_size * 1e-6 / seconds);
+        fprintf(stderr, "%-20s: %8d => %8d (%.2f seconds, %.2f MB/s)\n", argv[argi], input_size, (int)unpacked_size, seconds, unpacked_size * 1e-6 / seconds);
     }
 
     if (verifyfolder) {
@@ -4418,7 +4446,7 @@ int main(int argc, char *argv[]) {
         if (*s == '/' || *s == '\\')
           basename = s + 1;
       const char *ext = strrchr(basename, '.');
-      snprintf(buf, sizeof(buf), "%s/%.*s", verifyfolder, ext ? (ext - basename) : strlen(basename), basename);
+      snprintf(buf, sizeof(buf), "%s/%.*s", verifyfolder, (int)(ext ? (ext - basename) : strlen(basename)), basename);
       if (!Verify(buf, output, outbytes, curfile))
         return 1;
       nverify++;

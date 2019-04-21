@@ -5,27 +5,41 @@
 
 #pragma once
 
-#include "targetver.h"
-
 #define _CRT_SECURE_NO_WARNINGS 1
 
 #include <stdio.h>
-#include <tchar.h>
 #include <stdlib.h>
 #include <string.h>
-#include <intrin.h>
 #include <assert.h>
+#include <stdint.h>
+#if defined(_MSC_VER)
 #include <Windows.h>
+#include <intrin.h>
+#undef max
+#undef min
+#else
+#include <stddef.h>
+#define __forceinline inline
+#define _byteswap_ushort(x) __builtin_bswap16((uint16)(x))
+#define _byteswap_ulong(x) __builtin_bswap32((uint32)(x))
+#define _byteswap_uint64(x) __builtin_bswap64((uint64)(x))
+#define _BitScanForward(dst, x) (*(dst) = __builtin_ctz(x))
+#define _BitScanReverse(dst, x) (*(dst) = (__builtin_clz(x) ^ 31))
+#define _rotl(x,n) __builtin_rotateleft32(x, n)
+#include <xmmintrin.h>
+#endif
 
 #pragma warning (disable: 4244)
+#pragma warning (disable: 4530) // c++ exception handler used without unwind semantics
+#pragma warning (disable: 4018) // signed/unsigned mismatch
 
 // TODO: reference additional headers your program requires here
-typedef unsigned char byte;
-typedef unsigned char uint8;
-typedef unsigned int uint32;
-typedef unsigned __int64 uint64;
-typedef signed __int64 int64;
-typedef signed int int32;
-typedef unsigned short uint16;
-typedef signed short int16;
+typedef uint8_t byte;
+typedef uint8_t uint8;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
+typedef int64_t int64;
+typedef int32_t int32;
+typedef uint16_t uint16;
+typedef int16_t int16;
 typedef unsigned int uint;

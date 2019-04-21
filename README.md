@@ -1,6 +1,8 @@
 # ooz
 Open source Kraken / Mermaid / Selkie / Leviathan / LZNA / Bitknit decompressor
 
+Can also compress Kraken / Mermaid / Selkie / Leviathan
+
 Also supports using oo2core_7_win32.dll / oo2core_7_win64.dll which can be acquired from the free game Warframe on steam.
 
 ```
@@ -9,7 +11,7 @@ ooz v7.0
 Usage: ooz [options] input [output]
  -c --stdout              write to stdout
  -d --decompress          decompress (default)
- -z --compress            compress (requires oo2core_7_win64.dll)
+ -z --compress            compress
  -b                       just benchmark, don't overwrite anything
  -f                       force overwrite existing file
  --dll                    decompress with the dll
