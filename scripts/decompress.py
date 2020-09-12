@@ -25,6 +25,9 @@ if cmd == 'block':
 		data = f.read()
 		unpacked_data = ffi.new("uint8_t[]", uncompressed_size)
 		unpacked_size = ooz.OozDecompressBlock(data, len(data), unpacked_data, uncompressed_size)
+		if unpacked_size != uncompressed_size:
+			printf("Could not decompress block", file=sys.stderr)
+			exit(1)
 		sys.stdout.buffer.write(ffi.buffer(unpacked_data))
 
 elif cmd == 'bundle':
@@ -33,8 +36,9 @@ elif cmd == 'bundle':
 		data = f.read()
 		bundle_mem = ooz.OozDecompressBundle(data, len(data))
 		if bundle_mem:
-			size = ooz.OozMemSize(bundle)
+			size = ooz.OozMemSize(bundle_mem)
 			sys.stdout.buffer.write(ffi.buffer(bundle_mem, size))
 			ooz.OozMemFree(bundle_mem)
 		else:
 			print("Could not decompress bundle", file=sys.stderr)
+			exit(1)
