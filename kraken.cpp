@@ -4128,9 +4128,9 @@ bool Kraken_DecodeStep(struct KrakenDecoder *dec,
   return true;
 }
   
-int Kraken_Decompress(const byte *src, size_t src_len, byte *dst, size_t dst_len) {
+int64 Kraken_Decompress(const byte *src, size_t src_len, byte *dst, size_t dst_len) {
   KrakenDecoder *dec = Kraken_Create();
-  int offset = 0;
+  int64 offset = 0;
   while (dst_len != 0) {
     if (!Kraken_DecodeStep(dec, dst, offset, dst_len, src, src_len))
       goto FAIL;
@@ -4152,6 +4152,8 @@ FAIL:
 
 // The decompressor will write outside of the target buffer.
 #define SAFE_SPACE 64
+
+#if !OOZ_BUILD_DLL
 
 void error(const char *s, const char *curfile = NULL) {
   if (curfile)
@@ -4478,3 +4480,4 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+#endif
