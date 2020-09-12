@@ -1,5 +1,6 @@
 #include "poe.h"
 
+#include <stddef.h>
 #include <string.h>
 
 #include <algorithm>
@@ -88,22 +89,23 @@ struct reader {
 	}
 };
 
-OozMem OozDecompressBundle(uint8_t const* src_data, size_t src_size) {
-	struct fixed_header {
-		uint32_t uncompressed_size;
-		uint32_t total_payload_size;
-		uint32_t head_payload_size;
-		enum encoding_schemes { Kraken_6 = 8, Mermaid_A = 9, Leviathan_C = 13 };
-		uint32_t first_file_encode;
-		uint32_t unk10;
-		uint64_t uncompressed_size2;
-		uint64_t total_payload_size2;
-		uint32_t block_count;
-		uint32_t unk28[5];
-	} fix_h;
+struct bundle_fixed_header {
+	uint32_t uncompressed_size;
+	uint32_t total_payload_size;
+	uint32_t head_payload_size;
+	enum encoding_schemes { Kraken_6 = 8, Mermaid_A = 9, Leviathan_C = 13 };
+	uint32_t first_file_encode;
+	uint32_t unk10;
+	uint64_t uncompressed_size2;
+	uint64_t total_payload_size2;
+	uint32_t block_count;
+	uint32_t unk28[5];
+};
 
+int64_t OozDecompressBundle(uint8_t const* src_data, size_t src_size, uint8_t* dst_data, size_t dst_size) {
 	reader r = { src_data, src_size };
 
+	bundle_fixed_header fix_h;
 	if (!r.read(fix_h.uncompressed_size) ||
 		!r.read(fix_h.total_payload_size) ||
 		!r.read(fix_h.head_payload_size) ||
@@ -113,38 +115,47 @@ OozMem OozDecompressBundle(uint8_t const* src_data, size_t src_size) {
 		!r.read(fix_h.total_payload_size2) ||
 		!r.read(fix_h.block_count) ||
 		!r.read(fix_h.unk28)) {
-		return 0;
+		return -1;
+	}
+
+	if (dst_size < fix_h.uncompressed_size2) {
+		// If an empty buffer is supplied, return the amount the caller needs to allocate.
+		return fix_h.uncompressed_size2;
 	}
 
 	std::vector<uint32_t> entry_sizes(fix_h.block_count);
 	if (!r.read(entry_sizes)) {
-		return 0;
+		return -1;
 	}
 
 	if (r.n < fix_h.total_payload_size2) {
-		return 0;
-	}
-
-	OozMem out_mem = OozMemAlloc(fix_h.uncompressed_size2);
-	if (!out_mem) {
-		return 0;
+		return -1;
 	}
 
 	uint8_t const* p = r.p;
 	size_t n = r.n;
-	uint8_t* out_p = out_mem;
+	uint8_t* out_p = dst_data;
 	size_t out_cur = 0;
 	for (size_t i = 0; i < entry_sizes.size(); ++i) {
 		size_t amount_to_write = (std::min<size_t>)(fix_h.uncompressed_size2 - out_cur, fix_h.unk28[0]);
 		int64_t amount_written = OozDecompressBlock(p, entry_sizes[i], out_p + out_cur, amount_to_write);
-		if (amount_written != amount_to_write) {
-			OozMemFree(out_mem);
-			return 0;
-		}
 		p += entry_sizes[i];
 		n -= entry_sizes[i];
 		out_cur += amount_written;
+		if (amount_written != amount_to_write) {
+			return -1;
+		}
 	}
 
-	return out_mem;
+	return out_cur;
+}
+
+OozMem OozDecompressBundleAlloc(uint8_t const* src_data, size_t src_size) {
+	int64_t dst_size = OozDecompressBundle(src_data, src_size, nullptr, 0);
+	OozMem dst_mem = OozMemAlloc(dst_size);
+	if (dst_size != OozDecompressBundle(src_data, src_size, dst_mem, dst_size)) {
+		OozMemFree(dst_mem);
+		return nullptr;
+	}
+	return dst_mem;
 }

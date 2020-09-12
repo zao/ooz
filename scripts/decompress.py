@@ -10,9 +10,12 @@ ffi.cdef("""
 	OozMem OozMemAlloc(size_t size);
 	int64_t OozMemSize(OozMem mem);
 	void OozMemFree(OozMem mem);
+	
 	int64_t OozDecompressBlock(uint8_t const* src_data, size_t src_size, uint8_t* dst_data, size_t dst_size);
 	OozMem OozDecompressBlockAlloc(uint8_t const* src_data, size_t src_size, size_t dst_size);
-	OozMem OozDecompressBundle(uint8_t const* src_data, size_t src_size);
+
+	int64_t OozDecompressBundle(uint8_t const* src_data, size_t src_size, uint8_t* dst_data, size_t dst_size);
+	OozMem OozDecompressBundleAlloc(uint8_t const* src_data, size_t src_size);
 """)
 
 ooz = ffi.dlopen("oozlib.dll")
@@ -34,7 +37,7 @@ elif cmd == 'bundle':
 	filename = sys.argv[2]
 	with open(filename, 'rb') as f:
 		data = f.read()
-		bundle_mem = ooz.OozDecompressBundle(data, len(data))
+		bundle_mem = ooz.OozDecompressBundleAlloc(data, len(data))
 		if bundle_mem:
 			size = ooz.OozMemSize(bundle_mem)
 			sys.stdout.buffer.write(ffi.buffer(bundle_mem, size))
