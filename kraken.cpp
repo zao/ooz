@@ -19,6 +19,36 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "stdafx.h"
 #include <sys/stat.h>
 
+#if defined _WIN32 || defined __CYGWIN__
+#ifdef OOZ_DYNAMIC
+#ifdef OOZ_BUILD_DLL
+#ifdef __GNUC__
+#define OOZ_DLL_PUBLIC __attribute__ ((dllexport))
+#else
+#define OOZ_DLL_PUBLIC __declspec(dllexport) // Note: actually gcc seems to also supports this syntax.
+#endif
+#else
+#ifdef __GNUC__
+#define OOZ_DLL_PUBLIC __attribute__ ((dllimport))
+#else
+#define OOZ_DLL_PUBLIC __declspec(dllimport) // Note: actually gcc seems to also supports this syntax.
+#endif
+#endif
+#define OOZ_DLL_LOCAL
+#else
+#define OOZ_DLL_PUBLIC
+#define OOZ_DLL_LOCAL
+#endif
+#else
+#if __GNUC__ >= 4
+#define OOZ_DLL_PUBLIC __attribute__ ((visibility ("default")))
+#define OOZ_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
+#else
+#define OOZ_DLL_PUBLIC
+#define OOZ_DLL_LOCAL
+#endif
+#endif
+
 // Header in front of each 256k block
 typedef struct KrakenHeader {
   // Type of decoder used, 6 means kraken
@@ -4127,10 +4157,10 @@ bool Kraken_DecodeStep(struct KrakenDecoder *dec,
   dec->dst_used = dst_bytes_left;
   return true;
 }
-  
-int64 Kraken_Decompress(const byte *src, size_t src_len, byte *dst, size_t dst_len) {
+
+int Kraken_Decompress(const byte *src, size_t src_len, byte *dst, size_t dst_len) {
   KrakenDecoder *dec = Kraken_Create();
-  int64 offset = 0;
+  int offset = 0;
   while (dst_len != 0) {
     if (!Kraken_DecodeStep(dec, dst, offset, dst_len, src, src_len))
       goto FAIL;
@@ -4148,6 +4178,13 @@ int64 Kraken_Decompress(const byte *src, size_t src_len, byte *dst, size_t dst_l
 FAIL:
   Kraken_Destroy(dec);
   return -1;
+}
+
+extern "C" {
+    OOZ_DLL_PUBLIC int Ooz_Decompress(uint8_t const* src_buf, int src_len, uint8_t* dst, size_t dst_size,
+        int, int, int, uint8_t*, size_t, void*, void*, void*, size_t, int) {
+        return Kraken_Decompress(src_buf, src_len, dst, dst_size);
+    }
 }
 
 // The decompressor will write outside of the target buffer.

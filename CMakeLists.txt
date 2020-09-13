@@ -1,4 +1,5 @@
-project(ooz CXX)
+cmake_minimum_required(VERSION 3.15)
+project(ooz C CXX)
 
 set(OOZ_SOURCES
     bitknit.cpp
@@ -28,7 +29,7 @@ set(OOZ_SOURCES
 
 add_executable(ooz ${OOZ_SOURCES})
 
-add_library(oozlib SHARED ${OOZ_SOURCES} "poe.cpp" "poe.h")
+add_library(libooz SHARED ${OOZ_SOURCES})
 
-target_compile_definitions(oozlib PRIVATE OOZ_USE_DLL)
-target_compile_definitions(oozlib PRIVATE OOZ_BUILD_DLL)
+target_compile_definitions(libooz PUBLIC OOZ_DYNAMIC)
+target_compile_definitions(libooz PRIVATE OOZ_BUILD_DLL)
