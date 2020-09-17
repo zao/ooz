@@ -109,7 +109,7 @@ BUN_DLL_PUBLIC Bun* BunNew(char const* decompressor_path, char const* decompress
 	}
 	bun->decompress_fun_ = fun;
 #else
-	auto mod = dlopen(decompressor_path, RTLD_LOCAL);
+	auto mod = dlopen(decompressor_path, RTLD_NOW | RTLD_LOCAL);
 	if (!mod) {
 		return nullptr;
 	}

@@ -73,7 +73,7 @@ namespace poe::util {
 			crypto_hash_sha256_init(&state_);
 		}
 
-		void feed(std::byte const* data, size_t size) override {
+		void feed(uint8_t const* data, size_t size) override {
 			crypto_hash_sha256_update(&state_, reinterpret_cast<unsigned char const*>(data), size);
 		}
 

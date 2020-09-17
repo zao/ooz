@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 uint64_t fnv1_64(void const* data, size_t n);

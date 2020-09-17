@@ -37,17 +37,18 @@ namespace bun {
 
 		namespace {
 			template <typename String> void convert_string(std::u16string const& src, String& dest) {
+				using CharT = typename String::value_type;
 #ifdef _WIN32
 				LPCWCH src_p = reinterpret_cast<LPCWCH>(src.data());
 				int src_n = static_cast<int>(src.size());
 				int cch = WideCharToMultiByte(CP_UTF8, 0, src_p, src_n, nullptr, 0, nullptr, nullptr);
 				std::vector<char> buf(cch);
 				WideCharToMultiByte(CP_UTF8, 0, src_p, src_n, buf.data(), static_cast<int>(buf.size()), nullptr, nullptr);
-				dest.assign(reinterpret_cast<typename String::value_type*>(buf.data()), buf.size());
+				dest.assign(reinterpret_cast<CharT*>(buf.data()), buf.size());
 #else
 				size_t cch{};
-				uint8_t* p = u16_to_u8(src.data(), src.size(), nullptr, &cch);
-				dest.assign(reinterpret_cast<char8_t*>(p), cch);
+				uint8_t* p = u16_to_u8(reinterpret_cast<uint16_t const*>(src.data()), src.size(), nullptr, &cch);
+				dest.assign(reinterpret_cast<CharT*>(p), cch);
 				free(p);
 #endif
 			}
@@ -62,7 +63,7 @@ namespace bun {
 				dest.assign(reinterpret_cast<char16_t*>(buf.data()), buf.size());
 #else
 				size_t cch{};
-				uint16_t* p = u8_to_u16(src.data(), src.size(), nullptr, &cch);
+				uint16_t* p = u8_to_u16(reinterpret_cast<uint8_t const*>(src.data()), src.size(), nullptr, &cch);
 				dest.assign(reinterpret_cast<char16_t*>(p), cch);
 				free(p);
 #endif

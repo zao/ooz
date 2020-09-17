@@ -30,10 +30,15 @@ std::optional<std::filesystem::path> get_reg_path(wchar_t const *subkey, wchar_t
 #endif
 
 std::optional<std::filesystem::path> standalone_install_dir() {
+#if _WIN32
     return get_reg_path(LR"(SOFTWARE\GrindingGearGames\Path of Exile)", L"InstallLocation");
+#else
+    return {};
+#endif
 }
 
 std::optional<std::filesystem::path> steam_install_dir() {
+#if _WIN32
     auto steam_root = get_reg_path(LR"(SOFTWARE\Valve\Steam)", L"SteamPath");
     if (!steam_root || !exists(*steam_root)) {
         return {};
@@ -103,6 +108,9 @@ std::optional<std::filesystem::path> steam_install_dir() {
         }
     }
     return {};
+#else
+    return {};
+#endif
 }
 } // namespace
 

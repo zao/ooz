@@ -80,9 +80,14 @@ int main(int argc, char** argv) {
 		vfs = &ggpk_vfs.vfs;
 	}
 
-	Bun* bun = BunNew("libooz.dll", "Ooz_Decompress");
+#if _WIN32
+	std::string ooz_dll = "libooz.dll";
+#else
+	std::string ooz_dll = "./liblibooz.so";
+#endif
+	Bun* bun = BunNew(ooz_dll.c_str(), "Ooz_Decompress");
 	if (!bun) {
-		fprintf(stderr, "libooz.dll not found\n");
+		fprintf(stderr, "Could not initialize Bun library\n");
 		return 1;
 	}
 
