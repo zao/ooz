@@ -68,8 +68,9 @@ struct BunIndex {
 };
 
 bool BunIndex::read_file(char const* path, std::vector<uint8_t>& out) {
+	std::string full_path = bundle_root_ + '/' + path;
 	if (vfs_) {
-		auto fh = vfs_->open(vfs_, path);
+		auto fh = vfs_->open(vfs_, full_path.c_str());
 		auto size = vfs_->size(vfs_, fh);
 		out.resize(size);
 		bool success = vfs_->read(vfs_, fh, out.data(), 0, size) == size;
@@ -78,7 +79,6 @@ bool BunIndex::read_file(char const* path, std::vector<uint8_t>& out) {
 		return success;
 	}
 	else {
-		std::string full_path = bundle_root_ + '/' + path;
 		std::ifstream is(full_path, std::ios::binary);
 		if (!is) {
 			return false;
@@ -176,11 +176,11 @@ std::string hex_dump(size_t width, uint8_t const* p, size_t n) {
 	return s;
 }
 
-BUN_DLL_PUBLIC BunIndex* BunIndexOpen(Bun* bun, Vfs* vfs, char const* bundle_dir) {
+BUN_DLL_PUBLIC BunIndex* BunIndexOpen(Bun* bun, Vfs* vfs, char const* root_dir) {
 	auto idx = std::make_unique<BunIndex>();
 	idx->bun_ = bun;
 	idx->vfs_ = vfs;
-	idx->bundle_root_ = bundle_dir;
+	idx->bundle_root_ = vfs ? "Bundles2" : (root_dir + std::string("/Bundles2"));
 
 	std::vector<uint8_t> index_bin_src;
 	if (!idx->read_file("_.index.bin", index_bin_src)) {
@@ -217,38 +217,12 @@ BUN_DLL_PUBLIC BunIndex* BunIndexOpen(Bun* bun, Vfs* vfs, char const* bundle_dir
 		idx->bundle_infos_.push_back(bi);
 	}
 
-	std::vector<uint8_t> buf;
-	idx->read_file("_.index.txt", buf);
-	std::istringstream iss(std::string(buf.begin(), buf.end()));
-
 	std::map<std::string, size_t> bundle_name_to_bundle_index;
 
 	std::vector<std::vector<std::string>> bundled_filenames(idx->bundle_infos_.size());
 
 	using FilenameBundle = std::map<std::string, size_t>;
 	FilenameBundle filename_bundle;
-
-#if 0
-	size_t last_bundle = 0;
-	size_t text_bundle_count = 0;
-	size_t text_file_count = 0;
-	std::string line;
-	while (std::getline(iss, line)) {
-		if (line.size() && line.back() == '\r') {
-			line.resize(line.size() - 1);
-		}
-		//fprintf(stderr, "%s", hex_dump(16, reinterpret_cast<uint8_t const*>(line.data()), line.size()).c_str());
-		auto bundle_I = bundle_index_from_name.find(line);
-		if (bundle_I != bundle_index_from_name.end()) {
-			last_bundle = bundle_I->second;
-			++text_bundle_count;
-		}
-		else {
-			bundled_filenames[last_bundle].push_back(line);
-			++text_file_count;
-		}
-	}
-#endif
 
 	std::map<size_t, std::vector<size_t>> bundle_file_seqs;
 	uint32_t file_count;
@@ -390,11 +364,11 @@ BUN_DLL_PUBLIC BunMem BunIndexExtractBundle(BunIndex* idx, int32_t bundle_id) {
 	}
 
 	auto& bi = idx->bundle_infos_[bundle_id];
-	std::filesystem::path bundle_path = idx->bundle_root_;
-	bundle_path /= bi.name_ + ".bundle.bin";
+
+	std::string bundle_path = bi.name_ + ".bundle.bin";
 
 	std::vector<uint8_t> bundle_data;
-	slurp_file(bundle_path, bundle_data);
+	idx->read_file(bundle_path.c_str(), bundle_data);
 	return BunDecompressBundleAlloc(idx->bun_, bundle_data.data(), bundle_data.size());
 }
 

@@ -9,15 +9,76 @@
 
 #include "util.h"
 
+#include <poe/format/ggpk.hpp>
+#include <poe/util/utf.hpp>
+
 int main(int argc, char** argv) {
 	std::error_code ec;
 	if (argc < 3) {
-		fprintf(stderr, "%s BUNDLES2_DIR OUTPUT_DIR [FILE_PATHS...]\n\nIf FILE_PATHS are omitted the file paths are taken from stdin.\n", argv[0]);
+		fprintf(stderr, "%s GGPK_OR_STEAM_DIR OUTPUT_DIR [FILE_PATHS...]\n\n"
+			"GGPK_OR_STEAM_DIR should be either a full path to a Standalone GGPK file or the Steam game directory.\n"
+			"If FILE_PATHS are omitted the file paths are taken from stdin.\n", argv[0]);
 		return 1;
 	}
 
-	std::filesystem::path bundle_dir = argv[1];
+	std::filesystem::path ggpk_or_steam_dir = argv[1];
 	std::filesystem::path output_dir = argv[2];
+
+	Vfs* vfs = nullptr;
+	namespace ggpk = poe::format::ggpk;
+
+	struct GgpkVfs {
+		Vfs vfs;
+		std::unique_ptr<poe::format::ggpk::parsed_ggpk> pack;
+	} ggpk_vfs;
+	ggpk_vfs.vfs.open = [](Vfs* vfs, char const* c_path) -> VfsFile* {
+		auto* gvfs = reinterpret_cast<GgpkVfs*>(vfs);
+		ggpk::parsed_directory const* dir = gvfs->pack->root_;
+		std::u16string path = poe::util::lowercase(poe::util::to_u16string(c_path));
+		std::u16string_view tail(path);
+		while (!tail.empty() && dir) {
+			size_t delim = tail.find(u'/');
+			if (delim == 0) {
+				continue;
+			}
+			std::u16string_view head = tail.substr(0, delim);
+			bool next_found = false;
+			for (auto& child : dir->entries_) {
+				if (poe::util::lowercase(child->name_) == head) {
+					if (delim == std::string_view::npos) {
+						return (VfsFile*)dynamic_cast<ggpk::parsed_file const*>(child.get());
+					}
+					else {
+						dir = dynamic_cast<ggpk::parsed_directory const*>(child.get());
+						tail = tail.substr(delim + 1);
+						next_found = true;
+					}
+				}
+			}
+			if (!next_found) {
+				return nullptr;
+			}
+		}
+		return nullptr;
+	};
+	ggpk_vfs.vfs.close = [](Vfs* vfs, VfsFile* file) {};
+	ggpk_vfs.vfs.size = [](Vfs*, VfsFile* file) -> int64_t {
+		auto* f = reinterpret_cast<ggpk::parsed_file const*>(file);
+		return f ? f->data_size_ : -1;
+	};
+	ggpk_vfs.vfs.read = [](Vfs* vfs, VfsFile* file, uint8_t* out, int64_t offset, int64_t size) -> int64_t {
+		auto* gvfs = reinterpret_cast<GgpkVfs*>(vfs);
+		auto* f = reinterpret_cast<ggpk::parsed_file const*>(file);
+		if (offset + size > f->data_size_) {
+			return -1;
+		}
+		memcpy(out, gvfs->pack->mapping_.data() + f->data_offset_ + offset, size);
+		return size;
+	};
+	if (ggpk_or_steam_dir.extension() == ".ggpk") {
+		ggpk_vfs.pack = poe::format::ggpk::index_ggpk(ggpk_or_steam_dir);
+		vfs = &ggpk_vfs.vfs;
+	}
 
 	Bun* bun = BunNew("libooz.dll", "Ooz_Decompress");
 	if (!bun) {
@@ -25,7 +86,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	BunIndex* idx = BunIndexOpen(bun, nullptr, bundle_dir.string().c_str());
+	BunIndex* idx = BunIndexOpen(bun, vfs, ggpk_or_steam_dir.string().c_str());
 	if (!idx) {
 		fprintf(stderr, "Could not open index\n");
 		return 1;

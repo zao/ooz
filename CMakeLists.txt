@@ -49,5 +49,7 @@ target_compile_definitions(libbun PRIVATE BUN_BUILD_DLL)
 target_include_directories(libbun INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(libbun PUBLIC bunutil)
 
+add_subdirectory(libpoe)
+
 add_executable(bun_extract_file "bun_extract_file.cpp")
-target_link_libraries(bun_extract_file PRIVATE libbun)
+target_link_libraries(bun_extract_file PRIVATE libbun libpoe)
