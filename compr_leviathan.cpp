@@ -606,7 +606,7 @@ int EncodeLzOffsets(uint8 *dst, uint8 *dst_end, uint8 *u8_offs, uint32 *u32_offs
   uint offs_encode_type = 0;
   if (use_offset_modulo_coding) {
     uint8 *temp = new uint8[offs_count * 4 + 16];
-    std::auto_ptr<uint8> temp_deleter(temp);
+    std::unique_ptr<uint8_t[]> temp_deleter(temp);
 
     offs_encode_type = 1;
     if (level >= 8) {
@@ -864,7 +864,7 @@ static int Leviathan_EncodeLzArrays(LzTemp *lz_temp, float *cost_ptr, Levi::LitS
   uint8 *scratchx_end = scratchx + scratch_size;
 
   uint8 *temp = new uint8[space_usage];
-  std::auto_ptr<uint8> temp_deleter(temp);
+  std::unique_ptr<uint8_t[]> temp_deleter(temp);
 
   for (int i = 0; i < initial_bytes; i++)
     *dst++ = src[i];
@@ -1099,7 +1099,7 @@ static int Leviathan_EncodeLzArrays(LzTemp *lz_temp, float *cost_ptr, Levi::LitS
 
   int blkbytes = (src_len + 7) >> 3;
   uint8 *tokbuf = new uint8[blkbytes * 8];
-  std::auto_ptr<uint8> tokbuf_deleter(tokbuf);
+  std::unique_ptr<uint8_t[]> tokbuf_deleter(tokbuf);
 
   const uint8 *cmd_ptr_org[8];
   uint8 *cmd_ptr[8], *p = tokbuf;
