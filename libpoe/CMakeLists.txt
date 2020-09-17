@@ -13,7 +13,4 @@ add_library(libpoe STATIC
     "poe/util/utf.hpp"
 )
 
-add_subdirectory(mio)
-
 target_include_directories(libpoe PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/mio/single_include)
-target_link_libraries(libpoe PRIVATE mio)
