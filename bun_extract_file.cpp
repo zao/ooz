@@ -18,7 +18,7 @@
 using namespace std::string_view_literals;
 
 static char const* const USAGE =
-// "bun_extract_file list-files GGPK_OR_STEAM_DIR\n"
+"bun_extract_file list-files GGPK_OR_STEAM_DIR\n"
 "bun_extract_file extract-files [--regex] GGPK_OR_STEAM_DIR OUTPUT_DIR [FILE_PATHS...]\n\n"
 "GGPK_OR_STEAM_DIR should be either a full path to a Standalone GGPK file or the Steam game directory.\n"
 "If FILE_PATHS are omitted the file paths are taken from stdin.\n"
