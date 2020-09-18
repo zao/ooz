@@ -47,11 +47,11 @@ struct file_info {
 	uint32_t file_size_;
 };
 
-struct some_info {
-	uint32_t unk[2];
-	uint32_t unk1;
-	uint32_t unk3;
-	uint32_t unk4;
+struct path_rep_info {
+	uint64_t hash;
+	uint32_t offset;
+	uint32_t size;
+	uint32_t recursive_size;
 };
 
 struct BunIndex {
@@ -62,7 +62,7 @@ struct BunIndex {
 	BunMem index_mem_;
 	std::vector<bundle_info> bundle_infos_;
 	std::vector<file_info> file_infos_;
-	std::vector<some_info> some_infos_;
+	std::vector<path_rep_info> path_rep_infos_;
 	std::unordered_map<uint64_t, uint32_t> path_hash_to_file_info;
 	BunMem inner_mem_;
 };
@@ -272,14 +272,14 @@ BUN_DLL_PUBLIC BunIndex* BunIndexOpen(Bun* bun, Vfs* vfs, char const* root_dir) 
 	uint32_t some_count;
 	r.read(some_count);
 
-	idx->some_infos_.reserve(some_count);
+	idx->path_rep_infos_.reserve(some_count);
 	for (size_t i = 0; i < some_count; ++i) {
-		some_info si;
-		r.read(si.unk);
-		r.read(si.unk1);
-		r.read(si.unk3);
-		r.read(si.unk4);
-		idx->some_infos_.push_back(si);
+		path_rep_info si;
+		r.read(si.hash);
+		r.read(si.offset);
+		r.read(si.size);
+		r.read(si.recursive_size);
+		idx->path_rep_infos_.push_back(si);
 	}
 
 	auto inner_mem = BunDecompressBundleAlloc(idx->bun_, r.p_, r.n_);
@@ -395,16 +395,15 @@ BUN_DLL_PUBLIC int BunIndexFileInfo(BunIndex const* idx, int32_t file_info_id,
 	return 0;
 }
 
-BUN_DLL_PUBLIC int BunIndexPathRepInfo(BunIndex const* idx, int32_t path_rep_id, uint32_t* unk, uint32_t* unk1, uint32_t* unk3, uint32_t* unk4) {
-	if (!idx || path_rep_id < 0 || path_rep_id >= idx->some_infos_.size()) {
+BUN_DLL_PUBLIC int BunIndexPathRepInfo(BunIndex const* idx, int32_t path_rep_id, uint64_t* hash, uint32_t* offset, uint32_t* size, uint32_t* recursive_size) {
+	if (!idx || path_rep_id < 0 || path_rep_id >= idx->path_rep_infos_.size()) {
 		return -1;
 	}
-	auto si = idx->some_infos_[path_rep_id];
-	unk[0] = si.unk[0];
-	unk[1] = si.unk[1];
-	*unk1 = si.unk1;
-	*unk3 = si.unk3;
-	*unk4 = si.unk4;
+	auto si = idx->path_rep_infos_[path_rep_id];
+	*hash = si.hash;
+	*offset = si.offset;
+	*size = si.size;
+	*recursive_size = si.recursive_size;
 	return 0;
 }
 

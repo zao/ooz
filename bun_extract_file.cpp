@@ -4,80 +4,78 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
+#include "ggpk_vfs.h"
+#include "path_rep.h"
 #include "util.h"
 
-#include <poe/format/ggpk.hpp>
 #include <poe/util/utf.hpp>
 
-int main(int argc, char** argv) {
+using namespace std::string_view_literals;
+
+static char const* const USAGE =
+// "bun_extract_file list-files GGPK_OR_STEAM_DIR\n"
+"bun_extract_file extract-files [--regex] GGPK_OR_STEAM_DIR OUTPUT_DIR [FILE_PATHS...]\n\n"
+"GGPK_OR_STEAM_DIR should be either a full path to a Standalone GGPK file or the Steam game directory.\n"
+"If FILE_PATHS are omitted the file paths are taken from stdin.\n"
+"If --regex is given, FILE_PATHS are interpreted as regular expressions to match.\n";
+
+int main(int argc, char* argv[]) {
 	std::error_code ec;
-	if (argc < 3) {
-		fprintf(stderr, "%s GGPK_OR_STEAM_DIR OUTPUT_DIR [FILE_PATHS...]\n\n"
-			"GGPK_OR_STEAM_DIR should be either a full path to a Standalone GGPK file or the Steam game directory.\n"
-			"If FILE_PATHS are omitted the file paths are taken from stdin.\n", argv[0]);
+	if (argc < 2 || argv[1] == "--help"sv || argv[1] == "-h"sv) {
+		fprintf(stderr, USAGE);
 		return 1;
 	}
 
-	std::filesystem::path ggpk_or_steam_dir = argv[1];
-	std::filesystem::path output_dir = argv[2];
+	std::string command;
+	std::filesystem::path ggpk_or_steam_dir;
+	std::filesystem::path output_dir;
+	bool use_regex = false;
+	std::vector<std::string> tail_args;
 
-	Vfs* vfs = nullptr;
-	namespace ggpk = poe::format::ggpk;
+	command = argv[1];
 
-	struct GgpkVfs {
-		Vfs vfs;
-		std::unique_ptr<poe::format::ggpk::parsed_ggpk> pack;
-	} ggpk_vfs;
-	ggpk_vfs.vfs.open = [](Vfs* vfs, char const* c_path) -> VfsFile* {
-		auto* gvfs = reinterpret_cast<GgpkVfs*>(vfs);
-		ggpk::parsed_directory const* dir = gvfs->pack->root_;
-		std::u16string path = poe::util::lowercase(poe::util::to_u16string(c_path));
-		std::u16string_view tail(path);
-		while (!tail.empty() && dir) {
-			size_t delim = tail.find(u'/');
-			if (delim == 0) {
-				continue;
-			}
-			std::u16string_view head = tail.substr(0, delim);
-			bool next_found = false;
-			for (auto& child : dir->entries_) {
-				if (poe::util::lowercase(child->name_) == head) {
-					if (delim == std::string_view::npos) {
-						return (VfsFile*)dynamic_cast<ggpk::parsed_file const*>(child.get());
-					}
-					else {
-						dir = dynamic_cast<ggpk::parsed_directory const*>(child.get());
-						tail = tail.substr(delim + 1);
-						next_found = true;
-					}
-				}
-			}
-			if (!next_found) {
-				return nullptr;
+	int argi = 2;
+	while (argi < argc) {
+		if (argv[argi] == "--regex"sv) {
+			use_regex = true;
+			++argi;
+		}
+		else {
+			break;
+		}
+	}
+
+	if (command == "list-files"sv) {
+		if (argi < argc) {
+			ggpk_or_steam_dir = argv[argi++];
+		}
+		if (argi != argc) {
+			fprintf(stderr, USAGE);
+			return 1;
+		}
+	}
+	else if (command == "extract-files"sv) {
+		if (argi + 1 < argc) {
+			ggpk_or_steam_dir = argv[argi++];
+			output_dir = argv[argi++];
+			while (argi < argc) {
+				tail_args.push_back(argv[argi++]);
 			}
 		}
-		return nullptr;
-	};
-	ggpk_vfs.vfs.close = [](Vfs* vfs, VfsFile* file) {};
-	ggpk_vfs.vfs.size = [](Vfs*, VfsFile* file) -> int64_t {
-		auto* f = reinterpret_cast<ggpk::parsed_file const*>(file);
-		return f ? f->data_size_ : -1;
-	};
-	ggpk_vfs.vfs.read = [](Vfs* vfs, VfsFile* file, uint8_t* out, int64_t offset, int64_t size) -> int64_t {
-		auto* gvfs = reinterpret_cast<GgpkVfs*>(vfs);
-		auto* f = reinterpret_cast<ggpk::parsed_file const*>(file);
-		if (offset + size > f->data_size_) {
-			return -1;
-		}
-		memcpy(out, gvfs->pack->mapping_.data() + f->data_offset_ + offset, size);
-		return size;
-	};
+	}
+	else {
+		fprintf(stderr, USAGE);
+		return 1;
+	}
+
+	std::shared_ptr<GgpkVfs> vfs;
 	if (ggpk_or_steam_dir.extension() == ".ggpk") {
-		ggpk_vfs.pack = poe::format::ggpk::index_ggpk(ggpk_or_steam_dir);
-		vfs = &ggpk_vfs.vfs;
+		vfs = open_ggpk(ggpk_or_steam_dir);
 	}
 
 #if _WIN32
@@ -91,22 +89,77 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	BunIndex* idx = BunIndexOpen(bun, vfs, ggpk_or_steam_dir.string().c_str());
+	BunIndex* idx = BunIndexOpen(bun, borrow_vfs(vfs), ggpk_or_steam_dir.string().c_str());
 	if (!idx) {
 		fprintf(stderr, "Could not open index\n");
 		return 1;
 	}
 
-	std::vector<std::string> wanted_paths;
-	if (argc == 3) {
+	if (command == "list-files") {
+		auto rep_mem = BunIndexPathRepContents(idx);
+		for (size_t path_rep_id = 0;; ++path_rep_id) {
+			uint64_t hash;
+			uint32_t offset;
+			uint32_t size;
+			uint32_t recursive_size;
+			if (BunIndexPathRepInfo(idx, path_rep_id, &hash, &offset, &size, &recursive_size) < 0) {
+				break;
+			}
+			auto generated = generate_paths(rep_mem + offset, size);
+			for (auto& p : generated) {
+				std::cout << p << std::endl;
+			}
+		}
+		return 0;
+	}
+
+	std::vector<std::string> wanted_paths = tail_args;
+	if (wanted_paths.empty()) {
 		std::string line;
 		while (std::getline(std::cin, line)) {
 			wanted_paths.push_back(line);
 		}
 	}
-	else {
-		for (size_t i = 3; i < argc; ++i) {
-			wanted_paths.push_back(argv[i]);
+
+	std::vector<std::regex> regexes;
+	if (use_regex) {
+		bool regexes_good = true;
+		for (auto& path : wanted_paths) {
+			try {
+				regexes.push_back(std::regex(path));
+			}
+			catch (std::exception& e) {
+				fprintf(stderr, "Could not compile regex \"%s\": %s\n", path.c_str(), e.what());
+				regexes_good = false;
+			}
+		}
+		if (!regexes_good) {
+			return 1;
+		}
+
+		if (command == "extract-files") {
+			std::unordered_set<std::string> matching_paths;
+			auto rep_mem = BunIndexPathRepContents(idx);
+			for (size_t path_rep_id = 0;; ++path_rep_id) {
+				uint64_t hash;
+				uint32_t offset;
+				uint32_t size;
+				uint32_t recursive_size;
+				if (BunIndexPathRepInfo(idx, path_rep_id, &hash, &offset, &size, &recursive_size) < 0) {
+					break;
+				}
+				auto generated = generate_paths(rep_mem + offset, size);
+				for (auto& p : generated) {
+					if (!matching_paths.count(p)) {
+						for (auto& r : regexes) {
+							if (std::regex_match(p, r)) {
+								matching_paths.insert(p);
+							}
+						}
+					}
+				}
+			}
+			wanted_paths.assign(matching_paths.begin(), matching_paths.end());
 		}
 	}
 
@@ -117,7 +170,6 @@ int main(int argc, char** argv) {
 	};
 
 	std::unordered_map<uint32_t, std::vector<extract_info>> bundle_parts_to_extract;
-
 	for (auto path : wanted_paths) {
 		if (path.front() == '"' && path.back() == '"') {
 			path = path.substr(1, path.size() - 2);

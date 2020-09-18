@@ -65,7 +65,7 @@ extern "C" {
 		uint64_t* path_hash, uint32_t* bundle_index_, uint32_t* file_offset_, uint32_t* file_size_);
 
 	BUN_DLL_PUBLIC int BunIndexPathRepInfo(BunIndex const* idx, int32_t path_rep_id,
-		uint32_t* unk, uint32_t* unk1, uint32_t* unk3, uint32_t* unk4);
+		uint64_t* hash, uint32_t* offset, uint32_t* size, uint32_t* recursive_size);
 
 	BUN_DLL_PUBLIC BunMem BunIndexPathRepContents(BunIndex const* idx);
 
