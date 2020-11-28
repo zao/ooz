@@ -1415,7 +1415,7 @@ int Kraken_DecodeMultiArray(const uint8 *src, const uint8 *src_end,
  
   if (Q & 0x8000) {
     int size_out;
-    int n = Kraken_DecodeBytes(&interval_indexes, src, src_end, &size_out, num_indexes, false, scratch_cur, scratch_end);
+    int n = Kraken_DecodeBytes(&interval_indexes, src, src_end, &size_out, num_indexes, true, scratch_cur, scratch_end);
     if (n < 0 || size_out != num_indexes)
       return -1;
     src += n;
