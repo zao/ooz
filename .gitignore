@@ -3,3 +3,6 @@
 /.vs/
 /ooz.vcxproj.user
 out
+.vscode
+build
+build-*/

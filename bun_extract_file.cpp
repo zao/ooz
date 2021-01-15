@@ -81,12 +81,15 @@ int main(int argc, char* argv[]) {
 #if _WIN32
 	std::string ooz_dll = "libooz.dll";
 #else
-	std::string ooz_dll = "./liblibooz.so";
+	std::string ooz_dll = "liblibooz.so";
 #endif
 	Bun* bun = BunNew(ooz_dll.c_str(), "Ooz_Decompress");
 	if (!bun) {
-		fprintf(stderr, "Could not initialize Bun library\n");
-		return 1;
+		bun = BunNew(("./" + ooz_dll).c_str(), "Ooz_Decompress");
+		if (!bun) {
+			fprintf(stderr, "Could not initialize Bun library\n");
+			return 1;
+		}
 	}
 
 	BunIndex* idx = BunIndexOpen(bun, borrow_vfs(vfs), ggpk_or_steam_dir.string().c_str());
@@ -102,7 +105,7 @@ int main(int argc, char* argv[]) {
 			uint32_t offset;
 			uint32_t size;
 			uint32_t recursive_size;
-			if (BunIndexPathRepInfo(idx, path_rep_id, &hash, &offset, &size, &recursive_size) < 0) {
+			if (BunIndexPathRepInfo(idx, (int32_t)path_rep_id, &hash, &offset, &size, &recursive_size) < 0) {
 				break;
 			}
 			auto generated = generate_paths(rep_mem + offset, size);
@@ -145,7 +148,7 @@ int main(int argc, char* argv[]) {
 				uint32_t offset;
 				uint32_t size;
 				uint32_t recursive_size;
-				if (BunIndexPathRepInfo(idx, path_rep_id, &hash, &offset, &size, &recursive_size) < 0) {
+				if (BunIndexPathRepInfo(idx, (int32_t)path_rep_id, &hash, &offset, &size, &recursive_size) < 0) {
 					break;
 				}
 				auto generated = generate_paths(rep_mem + offset, size);
@@ -190,19 +193,32 @@ int main(int argc, char* argv[]) {
 		bundle_parts_to_extract[bundle_id].push_back(ei);
 	}
 
+	size_t extracted = 0;
+	size_t missed = 0;
 	for (auto& [bundle_id, parts] : bundle_parts_to_extract) {
 		std::vector<uint8_t> bundle_data;
 		auto bundle_mem = BunIndexExtractBundle(idx, bundle_id);
+		if (!bundle_mem) {
+			missed += parts.size();
+			char const* name;
+			uint32_t cb;
+			BunIndexBundleInfo(idx, bundle_id, &name, &cb);
+			fprintf(stderr, "Could not open bundle \"%s\", missing %zu files.\n", name, parts.size());
+			continue;
+		}
 		for (auto& part : parts) {
 			std::filesystem::path output_path = output_dir / part.path;
 			std::filesystem::create_directories(output_path.parent_path(), ec);
 			if (!dump_file(output_path, bundle_mem + part.offset, part.size)) {
 				fprintf(stderr, "Could not write file \"%s\"\n", output_path.string().c_str());
-				return 1;
+				++missed;
+				continue;
 			}
+			++extracted;
 		}
 		BunMemFree(bundle_mem);
 	}
+	fprintf(stderr, "Done, %zu/%zu extracted, %zu missed.\n", extracted, wanted_paths.size(), missed);
 	BunIndexClose(idx);
 	BunDelete(bun);
 

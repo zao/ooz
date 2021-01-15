@@ -47,7 +47,7 @@ std::optional<std::filesystem::path> steam_install_dir() {
     auto check_for_poe_dir = [](auto steamapps) -> std::optional<std::filesystem::path> {
         uint32_t const poe_appid = 238960;
         char buf[128];
-        sprintf(buf, "appmanifest_{}.acf", poe_appid);
+        sprintf(buf, "appmanifest_%u.acf", poe_appid);
         std::string const manifest_filename = buf;
         auto manifest_path = steamapps / manifest_filename;
         if (exists(manifest_path)) {

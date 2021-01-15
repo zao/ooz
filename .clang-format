@@ -1,0 +1,6 @@
+# DisableFormat: true
+SortIncludes: false
+
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
