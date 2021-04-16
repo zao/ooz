@@ -223,6 +223,10 @@ std::unique_ptr<parsed_ggpk> index_ggpk(std::filesystem::path pack_path) {
         if (child > source.size()) {
             return {};
         }
+        if (child == 0) {
+            free_encountered = true; // assume zero offset means no FREE chunk
+            continue;
+        }
         uint32_t rec_len;
         poe::format::ggpk::chunk_tag tag;
         auto reader = poe::util::make_stream_reader(source, child);
