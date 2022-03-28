@@ -242,32 +242,10 @@ BUN_DLL_PUBLIC BunIndex *BunIndexOpen(Bun *bun, Vfs *vfs, char const *root_dir) 
         idx->file_infos_.push_back(fi);
     }
 
-#if 0
-	for (size_t i = 0; i < idx->bundle_infos_.size(); ++i) {
-		size_t binary_bundle_size = bundle_file_seqs[i].size();
-		size_t text_bundle_size = bundled_filenames[i].size();
-		if (binary_bundle_size != text_bundle_size) {
-			fprintf(stderr, "File count for bundle %zu (\"%s\") mismatch - binary (%zu) and text (%zu)\n",
-				i, idx->bundle_infos_[i].name_.c_str(), binary_bundle_size, text_bundle_size);
-		}
-	}
-#endif
-
     fprintf(stderr, "Bundle count in index binary: %zu\n", idx->bundle_infos_.size());
     // fprintf(stderr, "Bundle count in index text:   %zu\n", text_bundle_count);
     fprintf(stderr, "File count in index binary: %zu\n", idx->file_infos_.size());
     // fprintf(stderr, "File count in index text:   %zu\n", text_file_count);
-
-#if 0
-	auto I = std::find_if(idx->bundle_infos_.begin(), idx->bundle_infos_.end(), [](auto a) {
-		return a.name_ == "Data.dat_4";
-		});
-	if (I != idx->bundle_infos_.end()) {
-		auto& bi = *I;
-		size_t i = I - idx->bundle_infos_.begin();
-		fprintf(stderr, "Bundle %zu - name: \"%s\", uncompressed size: %u\n", i, bi.name_.c_str(), bi.uncompressed_size_);
-	}
-#endif
 
     uint32_t some_count;
     r.read(some_count);
@@ -285,19 +263,6 @@ BUN_DLL_PUBLIC BunIndex *BunIndexOpen(Bun *bun, Vfs *vfs, char const *root_dir) 
     auto inner_mem = BunDecompressBundleAlloc(idx->bun_, r.p_, r.n_);
     idx->inner_mem_ = inner_mem;
     fprintf(stderr, "Decompressed inner size: %lld\n", BunMemSize(inner_mem));
-
-    {
-        std::ofstream os("C:/Temp/_.index.mem", std::ios::binary);
-        os.write((char const *)idx->index_mem_, BunMemSize(idx->index_mem_));
-    }
-    {
-        std::ofstream os("C:/Temp/_.index-inner.mem", std::ios::binary);
-        os.write((char const *)idx->inner_mem_, BunMemSize(idx->inner_mem_));
-    }
-
-#if 0
-
-#endif
 
     return idx.release();
 }
