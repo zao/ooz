@@ -4004,7 +4004,7 @@ int Mermaid_DecodeQuantum(byte *dst, byte *dst_end, byte *dst_start,
       if (src_end - src < src_used)
         return -1;
       if (src_used < dst_count) {
-        int temp_usage = 2 * dst_count + 32;
+        int temp_usage = 2 * dst_count + 32 + 0x4000; // Tans Lut may need upwards of 16k of temp storage
         if (temp_usage > 0x40000) temp_usage = 0x40000;
         if (!Mermaid_ReadLzTable(mode,
                                 src, src + src_used,
