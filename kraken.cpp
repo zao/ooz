@@ -1373,8 +1373,8 @@ int Kraken_DecodeMultiArray(const uint8 *src, const uint8 *src_end,
     return src - src_org; // not supported yet
   }
 
-  uint8 *entropy_array_data[32];
-  uint32 entropy_array_size[32];
+  uint8 *entropy_array_data[63];
+  uint32 entropy_array_size[63];
 
   // First loop just decodes everything to scratch
   uint8 *scratch_cur = scratch;
