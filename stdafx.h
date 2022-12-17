@@ -31,7 +31,9 @@ static inline uint32_t _rotl(uint32_t x, int n) {
   return (((x) << (n)) | ((x) >> (32-(n))));
 }
 
+#ifndef __aarch64__
 #include <xmmintrin.h>
+#endif
 #endif
 
 #pragma warning (disable: 4244)

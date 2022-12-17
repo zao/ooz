@@ -30,6 +30,11 @@ set(OOZ_SOURCES
     targetver.h
 )
 
+set(LITE_SOURCES bitknit-lite.cpp fake-sse.h kraken-lite.cpp lzna-lite.cpp)
+add_library(libooz-lite SHARED ${LITE_SOURCES})
+add_executable(ooz-validate ${LITE_SOURCES} validate.cpp)
+target_link_libraries(ooz-validate PRIVATE PkgConfig::libsodium)
+
 add_executable(ooz ${OOZ_SOURCES})
 
 add_library(libooz SHARED ${OOZ_SOURCES})
