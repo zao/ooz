@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "stdafx.h"
 #include <sys/stat.h>
-#include "fake-sse.h"
 
 #if defined _WIN32 || defined __CYGWIN__
 #ifdef OOZ_DYNAMIC

@@ -1,7 +1,5 @@
 #include "stdafx.h"
 
-#include "fake-sse.h"
-
 typedef uint16 LznaBitModel;
 
 // State for a 4-bit value RANS model

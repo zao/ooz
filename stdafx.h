@@ -13,9 +13,12 @@
 #include <assert.h>
 #include <stdint.h>
 #include <limits.h>
+
+#define SIMDE_ENABLE_NATIVE_ALIASES 1
+#include <simde/x86/sse2.h>
+
 #if defined(_MSC_VER)
 #include <Windows.h>
-#include <intrin.h>
 #undef max
 #undef min
 #else
@@ -30,10 +33,6 @@
 static inline uint32_t _rotl(uint32_t x, int n) {
   return (((x) << (n)) | ((x) >> (32-(n))));
 }
-
-#ifndef __aarch64__
-#include <xmmintrin.h>
-#endif
 #endif
 
 #pragma warning (disable: 4244)
