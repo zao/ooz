@@ -150,54 +150,54 @@ static void ReduceNumHistograms(std::vector<HistoAndCount> *array, float A, floa
   array->resize(n);
 }
 
-#define LOAD__m128i(x) _mm_load_si128((const __m128i*)(x))
+#define LOAD__m128i(x) simde_mm_load_si128((const simde__m128i*)(x))
 
 static void EncodeAdvMultiArray_BuildTable(uint64 *break_mask, uint8 *best_index_ptr,
                                 const uint8 *ptr_cur, const uint8 *ptr_end,
                                 uint16 *interval_scores, const uint16 *bits_for_sym,
                                 int num_intervals_unused, int num_u16,
                                 int prev_score_int, int cost_plus_4096_in) {
-  __m128i cost_plus_4096 = _mm_set1_epi16(cost_plus_4096_in);
-  __m128i prev_score = _mm_set1_epi16(prev_score_int), best_score;
+  simde__m128i cost_plus_4096 = simde_mm_set1_epi16(cost_plus_4096_in);
+  simde__m128i prev_score = simde_mm_set1_epi16(prev_score_int), best_score;
 
   if (num_u16 > 8) {
     while (ptr_cur < ptr_end) {
       size_t i = 0;
       uint64 bits = 0;
       const uint16 *bsym = &bits_for_sym[num_u16 * *ptr_cur++];
-      best_score = _mm_set1_epi16(0x7fff);
+      best_score = simde_mm_set1_epi16(0x7fff);
       do {
-        __m128i scores_sub = _mm_sub_epi16(LOAD__m128i(&interval_scores[i]), prev_score);
-        __m128i scores = _mm_add_epi16(LOAD__m128i(&bsym[i]), _mm_min_epi16(scores_sub, cost_plus_4096));
+        simde__m128i scores_sub = simde_mm_sub_epi16(LOAD__m128i(&interval_scores[i]), prev_score);
+        simde__m128i scores = simde_mm_add_epi16(LOAD__m128i(&bsym[i]), simde_mm_min_epi16(scores_sub, cost_plus_4096));
         // store it for temp so we can read it back in cmp below
-        _mm_store_si128((__m128i*)&interval_scores[i], scores);
-        best_score = _mm_min_epi16(best_score, scores);
-        bits |= (uint64)_mm_movemask_epi8(_mm_packs_epi16(_mm_cmpgt_epi16(scores_sub, cost_plus_4096), _mm_set1_epi32(0))) << i;
+        simde_mm_store_si128((simde__m128i*)&interval_scores[i], scores);
+        best_score = simde_mm_min_epi16(best_score, scores);
+        bits |= (uint64)simde_mm_movemask_epi8(simde_mm_packs_epi16(simde_mm_cmpgt_epi16(scores_sub, cost_plus_4096), simde_mm_set1_epi32(0))) << i;
       } while ((i += 8) < num_u16);
       // Duplicate the best score on all the lanes across
-      best_score = _mm_min_epi16(best_score, _mm_shuffle_epi32(best_score, 0x4e));
-      best_score = _mm_min_epi16(best_score, _mm_shuffle_epi32(best_score, 0xb1));
-      best_score = _mm_min_epi16(best_score, _mm_shufflelo_epi16(_mm_shufflehi_epi16(best_score, 0xb1), 0xb1));
+      best_score = simde_mm_min_epi16(best_score, simde_mm_shuffle_epi32(best_score, 0x4e));
+      best_score = simde_mm_min_epi16(best_score, simde_mm_shuffle_epi32(best_score, 0xb1));
+      best_score = simde_mm_min_epi16(best_score, simde_mm_shufflelo_epi16(simde_mm_shufflehi_epi16(best_score, 0xb1), 0xb1));
       // Figure out the index of the best score
       int mask;
-      for (i = 0; (mask = _mm_movemask_epi8(_mm_cmpeq_epi16(LOAD__m128i(&interval_scores[i]), best_score))) == 0; i += 8) {}
+      for (i = 0; (mask = simde_mm_movemask_epi8(simde_mm_cmpeq_epi16(LOAD__m128i(&interval_scores[i]), best_score))) == 0; i += 8) {}
       int best_index = (int)i + (BSF(mask) >> 1);
       *break_mask++ = bits;
       *best_index_ptr++ = best_index;
       prev_score = best_score;
     }
   } else {
-    __m128i scores = LOAD__m128i(interval_scores);
+    simde__m128i scores = LOAD__m128i(interval_scores);
     while (ptr_cur < ptr_end) {
       const uint16 *bsym = &bits_for_sym[8 * *ptr_cur++];
-      __m128i scores_sub = _mm_sub_epi16(scores, prev_score);
-      scores = _mm_add_epi16(LOAD__m128i(bsym), _mm_min_epi16(scores_sub, cost_plus_4096));
-      uint64 bits = _mm_movemask_epi8(_mm_packs_epi16(_mm_cmpgt_epi16(scores_sub, cost_plus_4096), _mm_set1_epi32(0)));
+      simde__m128i scores_sub = simde_mm_sub_epi16(scores, prev_score);
+      scores = simde_mm_add_epi16(LOAD__m128i(bsym), simde_mm_min_epi16(scores_sub, cost_plus_4096));
+      uint64 bits = simde_mm_movemask_epi8(simde_mm_packs_epi16(simde_mm_cmpgt_epi16(scores_sub, cost_plus_4096), simde_mm_set1_epi32(0)));
       // Duplicate the best score on all the lanes across
-      best_score = _mm_min_epi16(scores, _mm_shuffle_epi32(scores, 0x4e));
-      best_score = _mm_min_epi16(best_score, _mm_shuffle_epi32(best_score, 0xb1));
-      best_score = _mm_min_epi16(best_score, _mm_shufflelo_epi16(_mm_shufflehi_epi16(best_score, 0xb1), 0xb1));
-      int best_index = BSF(_mm_movemask_epi8(_mm_cmpeq_epi16(scores, best_score))) >> 1;
+      best_score = simde_mm_min_epi16(scores, simde_mm_shuffle_epi32(scores, 0x4e));
+      best_score = simde_mm_min_epi16(best_score, simde_mm_shuffle_epi32(best_score, 0xb1));
+      best_score = simde_mm_min_epi16(best_score, simde_mm_shufflelo_epi16(simde_mm_shufflehi_epi16(best_score, 0xb1), 0xb1));
+      int best_index = BSF(simde_mm_movemask_epi8(simde_mm_cmpeq_epi16(scores, best_score))) >> 1;
       *break_mask++ = bits;
       *best_index_ptr++ = best_index;
       prev_score = best_score;

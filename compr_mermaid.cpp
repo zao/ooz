@@ -202,9 +202,9 @@ static inline void Mermaid_WriteOffs(MermaidWriter &mw, int ml, int lrl, int off
     *(uint64*)mw.lit_cur = *(uint64*)lit_start;
     mw.lit_cur += lrl;
     if (mw.litsub_cur) {
-      _mm_storel_epi64((__m128i *)mw.litsub_cur,
-                       _mm_sub_epi8(_mm_loadl_epi64((const __m128i *)lit_start),
-                                    _mm_loadl_epi64((const __m128i *)&lit_start[last_offs])));
+      simde_mm_storel_epi64((simde__m128i *)mw.litsub_cur,
+                            simde_mm_sub_epi8(simde_mm_loadl_epi64((const simde__m128i *)lit_start),
+                                              simde_mm_loadl_epi64((const simde__m128i *)&lit_start[last_offs])));
       mw.litsub_cur += lrl;
     }
     *mw.token_cur++ = ((offs == 0) << 7) + lrl + 8 * ml;
@@ -224,7 +224,7 @@ static void Mermaid_WriteOffsWithLit1Inner(MermaidWriter &mw, int ml, int lrl, i
   int found[33];
   size_t found_ctr = 0;
   while (i < lrl) {
-    int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((const __m128i *)&lit_start[i]), _mm_loadu_si128((const __m128i *)&lit_start[i + last_offs])));
+    int mask = simde_mm_movemask_epi8(simde_mm_cmpeq_epi8(simde_mm_loadu_si128((const simde__m128i *)&lit_start[i]), simde_mm_loadu_si128((const simde__m128i *)&lit_start[i + last_offs])));
     if (!mask) {
       i += 16;
     } else {
@@ -1115,7 +1115,7 @@ static __forceinline void CheckBetter(MermaidState *st, int pos, int bits, int l
 }
 
 static __forceinline bool GetNumLitsBeforeMatch(const uint8 *src, uint offs, uint *lits) {
-  // There is yet a faster method — use hasless(v, 1), which is defined below; it works in 4
+  // There is yet a faster method ï¿½ use hasless(v, 1), which is defined below; it works in 4
   // operations and requires no subsquent verification. It simplifies to
   // #define haszero(v) (((v) - 0x01010101UL) & ~(v) & 0x80808080UL)
   uint64 v = *(uint64*)src ^ *(uint64*)(src - offs);

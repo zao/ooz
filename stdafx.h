@@ -14,7 +14,6 @@
 #include <stdint.h>
 #include <limits.h>
 
-#define SIMDE_ENABLE_NATIVE_ALIASES 1
 #include <simde/x86/sse2.h>
 
 #if defined(__x86_64__) || defined(_M_X64)

@@ -90,14 +90,14 @@ public:
       h[1] = c;
       h[0] = hval;
     } else if (NumHash == 16) {
-      __m128i a0 = _mm_load_si128((__m128i*)h);
-      __m128i a1 = _mm_loadu_si128((__m128i*)(h + 3));
-      __m128i a2 = _mm_loadu_si128((__m128i*)(h + 7));
-      __m128i a3 = _mm_loadu_si128((__m128i*)(h + 11));
-      _mm_storeu_si128((__m128i*)(h + 1), a0);
-      _mm_store_si128((__m128i*)(h + 4), a1);
-      _mm_store_si128((__m128i*)(h + 8), a2);
-      _mm_store_si128((__m128i*)(h + 12), a3);
+      simde__m128i a0 = simde_mm_load_si128((simde__m128i*)h);
+      simde__m128i a1 = simde_mm_loadu_si128((simde__m128i*)(h + 3));
+      simde__m128i a2 = simde_mm_loadu_si128((simde__m128i*)(h + 7));
+      simde__m128i a3 = simde_mm_loadu_si128((simde__m128i*)(h + 11));
+      simde_mm_storeu_si128((simde__m128i*)(h + 1), a0);
+      simde_mm_store_si128((simde__m128i*)(h + 4), a1);
+      simde_mm_store_si128((simde__m128i*)(h + 8), a2);
+      simde_mm_store_si128((simde__m128i*)(h + 12), a3);
       h[0] = hval;
     } else {
       assert(0);
@@ -128,9 +128,9 @@ public:
 
   inline void SetHashPosPrefetch(const uint8 *p) {
     SetHashPos(p);
-    _mm_prefetch((char*)hashentry_ptr_next_, _MM_HINT_T0);
+    simde_mm_prefetch((char*)hashentry_ptr_next_, SIMDE_MM_HINT_T0);
     if (DualHash)
-      _mm_prefetch((char*)hashentry2_ptr_next_, _MM_HINT_T0);
+      simde_mm_prefetch((char*)hashentry2_ptr_next_, SIMDE_MM_HINT_T0);
   }
 
   void Reset(const uint8 *p) {
@@ -261,8 +261,8 @@ public:
 
   inline void SetHashPosPrefetch(const uint8 *p) {
     HashPos hp = GetHashPos(p);
-    _mm_prefetch((char*)&firsthash_[hp.hash_a], _MM_HINT_T0);
-    _mm_prefetch((char*)&longhash_[hp.hash_b], _MM_HINT_T0);
+    simde_mm_prefetch((char*)&firsthash_[hp.hash_a], SIMDE_MM_HINT_T0);
+    simde_mm_prefetch((char*)&longhash_[hp.hash_b], SIMDE_MM_HINT_T0);
   }
 
   void InsertRange(const uint8 *p, size_t len) {

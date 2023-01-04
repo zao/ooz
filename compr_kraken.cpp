@@ -554,8 +554,9 @@ static inline int KrakEnc_WriteLits(KrakEncLz &kl, const uint8 *p, size_t len) {
 
   if (DoSubtract) {
     uint8 *sl = kl.sub_lits;
-    _mm_storel_epi64((__m128i *)sl, _mm_sub_epi8(_mm_loadl_epi64((const __m128i *)p),
-                                                 _mm_loadl_epi64((const __m128i *)&p[-kl.recent0])));
+    simde_mm_storel_epi64((simde__m128i *)sl,
+                          simde_mm_sub_epi8(simde_mm_loadl_epi64((const simde__m128i *)p),
+                                            simde_mm_loadl_epi64((const simde__m128i *)&p[-kl.recent0])));
     kl.sub_lits = sl + len;
   }
   return std::min<int>(len, 3);
@@ -666,7 +667,7 @@ int KrakenCompressVeryfast(LzCoder *coder, LzTemp *lztemp, MatchLenStorage *mls_
 
     if (Level >= 0) {
       hash = &hash_ptr[(size_t)(*(uint64*)src_cur_next * hashmult >> hashshift)];
-      _mm_prefetch((char*)hash, _MM_HINT_T0);
+      simde_mm_prefetch((char*)hash, SIMDE_MM_HINT_T0);
     }
     hash = &hash_ptr[(size_t)(*(uint64*)src_cur * hashmult >> hashshift)];
     uint32 u32_at_cur = *(uint32*)src_cur;

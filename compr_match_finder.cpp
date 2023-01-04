@@ -518,19 +518,19 @@ void FindMatchesHashBased(uint8 *src_base, int src_size, MatchLenStorage *mls, i
     uint32 offsets[16];
 
     uint32 *hashcur = cur1;
-    __m128i hash_high = _mm_set1_epi32(cur_high);
-    __m128i max_pos = _mm_set1_epi32(cur_pos - 1);
-    __m128i max_offset = _mm_set1_epi32(std::min<int>(src - src_base, 0x40000000));
-    __m128i v, u, m0, m1, m2, m3;
+    simde__m128i hash_high = simde_mm_set1_epi32(cur_high);
+    simde__m128i max_pos = simde_mm_set1_epi32(cur_pos - 1);
+    simde__m128i max_offset = simde_mm_set1_epi32(std::min<int>(src - src_base, 0x40000000));
+    simde__m128i v, u, m0, m1, m2, m3;
 
     for (;;) {
       int best_ml = 0;
 
 #define HASHROUND(pos)  \
-      v = _mm_load_si128((__m128i *)&hashcur[pos*4]); \
-      u = _mm_add_epi32(_mm_and_si128(_mm_sub_epi32(max_pos, v), _mm_set1_epi32(0x03ffffff)), _mm_set1_epi32(1)); \
-      _mm_storeu_si128((__m128i *)&offsets[pos*4], u); \
-      m##pos = _mm_cmpeq_epi32(_mm_set1_epi32(0), _mm_or_si128(_mm_cmpgt_epi32(u, max_offset), _mm_and_si128(_mm_xor_si128(v, hash_high), _mm_set1_epi32(0xfc000000))));
+      v = simde_mm_load_si128((simde__m128i *)&hashcur[pos*4]); \
+      u = simde_mm_add_epi32(simde_mm_and_si128(simde_mm_sub_epi32(max_pos, v), simde_mm_set1_epi32(0x03ffffff)), simde_mm_set1_epi32(1)); \
+      simde_mm_storeu_si128((simde__m128i *)&offsets[pos*4], u); \
+      m##pos = simde_mm_cmpeq_epi32(simde_mm_set1_epi32(0), simde_mm_or_si128(simde_mm_cmpgt_epi32(u, max_offset), simde_mm_and_si128(simde_mm_xor_si128(v, hash_high), simde_mm_set1_epi32(0xfc000000))));
       HASHROUND(0);
       HASHROUND(1);
       HASHROUND(2);
@@ -538,7 +538,7 @@ void FindMatchesHashBased(uint8 *src_base, int src_size, MatchLenStorage *mls, i
 #undef HASHROUND
 
 
-      uint32 matching_offsets = _mm_movemask_epi8(_mm_packs_epi16(_mm_packs_epi32(m0, m1), _mm_packs_epi32(m2, m3)));
+      uint32 matching_offsets = simde_mm_movemask_epi8(simde_mm_packs_epi16(simde_mm_packs_epi32(m0, m1), simde_mm_packs_epi32(m2, m3)));
       while (matching_offsets) {
         uint32 offset = offsets[BSF(matching_offsets)];
         matching_offsets &= matching_offsets - 1;

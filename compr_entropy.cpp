@@ -295,10 +295,10 @@ int EncodeArrayU8_Memset(uint8 *dst, uint8 *dst_end, const uint8 *src, int src_s
 
 static const uint8 *ScanForNextRLE3(const uint8 *src, const uint8 *src_end) {
   while (src < src_end) {
-    __m128i v0 = _mm_loadu_si128((__m128i*)src);
-    __m128i v1 = _mm_loadu_si128((__m128i*)(src + 1));
-    __m128i v2 = _mm_loadu_si128((__m128i*)(src + 2));
-    int eq_mask = _mm_movemask_epi8(_mm_and_si128(_mm_cmpeq_epi8(v0, v1), _mm_cmpeq_epi8(v0, v2)));
+    simde__m128i v0 = simde_mm_loadu_si128((simde__m128i*)src);
+    simde__m128i v1 = simde_mm_loadu_si128((simde__m128i*)(src + 1));
+    simde__m128i v2 = simde_mm_loadu_si128((simde__m128i*)(src + 2));
+    int eq_mask = simde_mm_movemask_epi8(simde_mm_and_si128(simde_mm_cmpeq_epi8(v0, v1), simde_mm_cmpeq_epi8(v0, v2)));
     if (eq_mask != 0)
       return src + BSF(eq_mask);
     src += 16;
@@ -309,7 +309,7 @@ static const uint8 *ScanForNextRLE3(const uint8 *src, const uint8 *src_end) {
 static const uint8 *GetRLELength(const uint8 *src, const uint8 *src_end, const uint8 *safe_end) {
   uint64 v0 = *(uint64*)src;
   uint64 v1 = *(uint64*)(src + 1);
-  __m128i p;
+  simde__m128i p;
 
   if (v0 != v1)
     return src + (BSF64(v0 ^ v1) >> 3) + 1;
@@ -317,11 +317,11 @@ static const uint8 *GetRLELength(const uint8 *src, const uint8 *src_end, const u
   if (src_end - src >= 25)
     src += 8;
 
-  p = _mm_loadu_si128((__m128i*)src);
+  p = simde_mm_loadu_si128((simde__m128i*)src);
   src += 1;
 
   while (src < safe_end) {
-    int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((__m128i *)src), p));
+    int mask = simde_mm_movemask_epi8(simde_mm_cmpeq_epi8(simde_mm_loadu_si128((simde__m128i *)src), p));
     if (mask != 0xffff)
       return src + BSF(~mask);
     src += 16;
@@ -334,7 +334,7 @@ static const uint8 *GetRLELength(const uint8 *src, const uint8 *src_end, const u
 static inline void CopyBytesFastOverflow(uint8 *dst, const uint8 *src, size_t n) {
   uint8 *dst_end = dst + n;
   do {
-    _mm_storeu_si128((__m128i*)dst, _mm_loadu_si128((__m128i*)src));
+    simde_mm_storeu_si128((simde__m128i*)dst, simde_mm_loadu_si128((simde__m128i*)src));
     dst += 16, src += 16;
   } while (dst < dst_end);
 }

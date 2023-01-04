@@ -193,18 +193,18 @@ struct LeviathanRecentOffs {
 
   void Insert(int offset) {
     if (offset > 0) {
-      __m128i a0 = _mm_loadu_si128((const __m128i *)&offs[7]),
-              a1 = _mm_loadu_si128((const __m128i *)&offs[11]);
-      _mm_storeu_si128((__m128i *)&offs[8], a0);
-      _mm_storeu_si128((__m128i *)&offs[12], a1);
+      simde__m128i a0 = simde_mm_loadu_si128((const simde__m128i *)&offs[7]),
+                   a1 = simde_mm_loadu_si128((const simde__m128i *)&offs[11]);
+      simde_mm_storeu_si128((simde__m128i *)&offs[8], a0);
+      simde_mm_storeu_si128((simde__m128i *)&offs[12], a1);
       offs[8] = offset;
     } else {
       size_t slot = -offset;
-      __m128i a0 = _mm_loadu_si128((const __m128i *)&offs[slot]),
-              a1 = _mm_loadu_si128((const __m128i *)&offs[slot + 4]);
+      simde__m128i a0 = simde_mm_loadu_si128((const simde__m128i *)&offs[slot]),
+                   a1 = simde_mm_loadu_si128((const simde__m128i *)&offs[slot + 4]);
       int old_offset = offs[slot + 8];
-      _mm_storeu_si128((__m128i *)&offs[slot + 1], a0);
-      _mm_storeu_si128((__m128i *)&offs[slot + 5], a1);
+      simde_mm_storeu_si128((simde__m128i *)&offs[slot + 1], a0);
+      simde_mm_storeu_si128((simde__m128i *)&offs[slot + 5], a1);
       offs[8] = old_offset;
     }
   }

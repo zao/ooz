@@ -476,13 +476,13 @@ int Log2RoundUp(uint32 v) {
         memcpy((d), &tmpVal, 8);  \
     }
 #define COPY_64_BYTES(d, s) {                                                 \
-        _mm_storeu_si128((__m128i*)d + 0, _mm_loadu_si128((__m128i*)s + 0));  \
-        _mm_storeu_si128((__m128i*)d + 1, _mm_loadu_si128((__m128i*)s + 1));  \
-        _mm_storeu_si128((__m128i*)d + 2, _mm_loadu_si128((__m128i*)s + 2));  \
-        _mm_storeu_si128((__m128i*)d + 3, _mm_loadu_si128((__m128i*)s + 3));  \
+        simde_mm_storeu_si128((simde__m128i*)d + 0, simde_mm_loadu_si128((simde__m128i*)s + 0));  \
+        simde_mm_storeu_si128((simde__m128i*)d + 1, simde_mm_loadu_si128((simde__m128i*)s + 1));  \
+        simde_mm_storeu_si128((simde__m128i*)d + 2, simde_mm_loadu_si128((simde__m128i*)s + 2));  \
+        simde_mm_storeu_si128((simde__m128i*)d + 3, simde_mm_loadu_si128((simde__m128i*)s + 3));  \
 }
 
-#define COPY_64_ADD(d, s, t) _mm_storel_epi64((__m128i *)(d), _mm_add_epi8(_mm_loadl_epi64((__m128i *)(s)), _mm_loadl_epi64((__m128i *)(t))))
+#define COPY_64_ADD(d, s, t) simde_mm_storel_epi64((simde__m128i *)(d), simde_mm_add_epi8(simde_mm_loadl_epi64((simde__m128i *)(s)), simde_mm_loadl_epi64((simde__m128i *)(t))))
 
 KrakenDecoder *Kraken_Create() {
   size_t scratch_size = 0x6C000;
@@ -612,37 +612,37 @@ static void ReverseBitsArray2048(const byte *input, byte *output) {
     0,    0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
     0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8
   };
-  __m128i t0, t1, t2, t3, s0, s1, s2, s3;
+  simde__m128i t0, t1, t2, t3, s0, s1, s2, s3;
   int i, j;
   for(i = 0; i != 32; i++) {
     j = offsets[i];
-    t0 = _mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)&input[j]), 
-                           _mm_loadl_epi64((const __m128i *)&input[j + 256]));
-    t1 = _mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)&input[j + 512]),
-                           _mm_loadl_epi64((const __m128i *)&input[j + 768]));
-    t2 = _mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)&input[j + 1024]),
-                           _mm_loadl_epi64((const __m128i *)&input[j + 1280]));
-    t3 = _mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)&input[j + 1536]),
-                           _mm_loadl_epi64((const __m128i *)&input[j + 1792]));
+    t0 = simde_mm_unpacklo_epi8(simde_mm_loadl_epi64((const simde__m128i *)&input[j]), 
+                                simde_mm_loadl_epi64((const simde__m128i *)&input[j + 256]));
+    t1 = simde_mm_unpacklo_epi8(simde_mm_loadl_epi64((const simde__m128i *)&input[j + 512]),
+                                simde_mm_loadl_epi64((const simde__m128i *)&input[j + 768]));
+    t2 = simde_mm_unpacklo_epi8(simde_mm_loadl_epi64((const simde__m128i *)&input[j + 1024]),
+                                simde_mm_loadl_epi64((const simde__m128i *)&input[j + 1280]));
+    t3 = simde_mm_unpacklo_epi8(simde_mm_loadl_epi64((const simde__m128i *)&input[j + 1536]),
+                                simde_mm_loadl_epi64((const simde__m128i *)&input[j + 1792]));
 
-    s0 = _mm_unpacklo_epi8(t0, t1);
-    s1 = _mm_unpacklo_epi8(t2, t3);
-    s2 = _mm_unpackhi_epi8(t0, t1);
-    s3 = _mm_unpackhi_epi8(t2, t3);
+    s0 = simde_mm_unpacklo_epi8(t0, t1);
+    s1 = simde_mm_unpacklo_epi8(t2, t3);
+    s2 = simde_mm_unpackhi_epi8(t0, t1);
+    s3 = simde_mm_unpackhi_epi8(t2, t3);
 
-    t0 = _mm_unpacklo_epi8(s0, s1);
-    t1 = _mm_unpacklo_epi8(s2, s3);
-    t2 = _mm_unpackhi_epi8(s0, s1);
-    t3 = _mm_unpackhi_epi8(s2, s3);
+    t0 = simde_mm_unpacklo_epi8(s0, s1);
+    t1 = simde_mm_unpacklo_epi8(s2, s3);
+    t2 = simde_mm_unpackhi_epi8(s0, s1);
+    t3 = simde_mm_unpackhi_epi8(s2, s3);
 
-    _mm_storel_epi64((__m128i *)&output[0], t0);
-    _mm_storeh_pi((__m64*)&output[1024], _mm_castsi128_ps(t0));
-    _mm_storel_epi64((__m128i *)&output[256], t1);
-    _mm_storeh_pi((__m64*)&output[1280], _mm_castsi128_ps(t1));
-    _mm_storel_epi64((__m128i *)&output[512], t2);
-    _mm_storeh_pi((__m64*)&output[1536], _mm_castsi128_ps(t2));
-    _mm_storel_epi64((__m128i *)&output[768], t3);
-    _mm_storeh_pi((__m64*)&output[1792], _mm_castsi128_ps(t3));
+    simde_mm_storel_epi64((simde__m128i *)&output[0], t0);
+    simde_mm_storeh_pi((simde__m64*)&output[1024], simde_mm_castsi128_ps(t0));
+    simde_mm_storel_epi64((simde__m128i *)&output[256], t1);
+    simde_mm_storeh_pi((simde__m64*)&output[1280], simde_mm_castsi128_ps(t1));
+    simde_mm_storel_epi64((simde__m128i *)&output[512], t2);
+    simde_mm_storeh_pi((simde__m64*)&output[1536], simde_mm_castsi128_ps(t2));
+    simde_mm_storel_epi64((simde__m128i *)&output[768], t3);
+    simde_mm_storeh_pi((simde__m64*)&output[1792], simde_mm_castsi128_ps(t3));
     output += 8;
   }
 }
@@ -1123,39 +1123,39 @@ int Huff_ReadCodeLengthsNew(BitReader *bits, uint8 *syms, uint32 *code_prefix) {
   } else {
     // Ensure we don't read unknown data that could contaminate
     // max_codeword_len.
-    __m128i bak = _mm_loadu_si128((__m128i*)&code_len[num_symbols]);
-    _mm_storeu_si128((__m128i*)&code_len[num_symbols], _mm_set1_epi32(0));
+    simde__m128i bak = simde_mm_loadu_si128((simde__m128i*)&code_len[num_symbols]);
+    simde_mm_storeu_si128((simde__m128i*)&code_len[num_symbols], simde_mm_set1_epi32(0));
     // apply a filter
-    __m128i avg = _mm_set1_epi8(0x1e);
-    __m128i ones = _mm_set1_epi8(1);
-    __m128i max_codeword_len = _mm_set1_epi8(10);
+    simde__m128i avg = simde_mm_set1_epi8(0x1e);
+    simde__m128i ones = simde_mm_set1_epi8(1);
+    simde__m128i max_codeword_len = simde_mm_set1_epi8(10);
     for (uint i = 0; i < num_symbols; i += 16) {
-      __m128i v = _mm_loadu_si128((__m128i*)&code_len[i]), t;
+      simde__m128i v = simde_mm_loadu_si128((simde__m128i*)&code_len[i]), t;
       // avg[0..15] = avg[15]
-      avg = _mm_unpackhi_epi8(avg, avg);
-      avg = _mm_unpackhi_epi8(avg, avg);
-      avg = _mm_shuffle_epi32(avg, 255);
+      avg = simde_mm_unpackhi_epi8(avg, avg);
+      avg = simde_mm_unpackhi_epi8(avg, avg);
+      avg = simde_mm_shuffle_epi32(avg, 255);
       // v = -(int)(v & 1) ^ (v >> 1)
-      v = _mm_xor_si128(_mm_sub_epi8(_mm_set1_epi8(0), _mm_and_si128(v, ones)),
-        _mm_and_si128(_mm_srli_epi16(v, 1), _mm_set1_epi8(0x7f)));
+      v = simde_mm_xor_si128(simde_mm_sub_epi8(simde_mm_set1_epi8(0), simde_mm_and_si128(v, ones)),
+        simde_mm_and_si128(simde_mm_srli_epi16(v, 1), simde_mm_set1_epi8(0x7f)));
       // create all the sums. v[n] = v[0] + ... + v[n]
-      t = _mm_add_epi8(_mm_slli_si128(v, 1), v);
-      t = _mm_add_epi8(_mm_slli_si128(t, 2), t);
-      t = _mm_add_epi8(_mm_slli_si128(t, 4), t);
-      t = _mm_add_epi8(_mm_slli_si128(t, 8), t);
+      t = simde_mm_add_epi8(simde_mm_slli_si128(v, 1), v);
+      t = simde_mm_add_epi8(simde_mm_slli_si128(t, 2), t);
+      t = simde_mm_add_epi8(simde_mm_slli_si128(t, 4), t);
+      t = simde_mm_add_epi8(simde_mm_slli_si128(t, 8), t);
       // u[x] = (avg + t[x-1]) >> 2
-      __m128i u = _mm_and_si128(_mm_srli_epi16(_mm_add_epi8(_mm_slli_si128(t, 1), avg), 2u), _mm_set1_epi8(0x3f));
+      simde__m128i u = simde_mm_and_si128(simde_mm_srli_epi16(simde_mm_add_epi8(simde_mm_slli_si128(t, 1), avg), 2u), simde_mm_set1_epi8(0x3f));
       // v += u
-      v = _mm_add_epi8(v, u);
+      v = simde_mm_add_epi8(v, u);
       // avg += t
-      avg = _mm_add_epi8(avg, t);
+      avg = simde_mm_add_epi8(avg, t);
       // max_codeword_len = max(max_codeword_len, v)
-      max_codeword_len = _mm_max_epu8(max_codeword_len, v);
+      max_codeword_len = simde_mm_max_epu8(max_codeword_len, v);
       // mem[] = v+1
-      _mm_storeu_si128((__m128i*)&code_len[i], _mm_add_epi8(v, _mm_set1_epi8(1)));
+      simde_mm_storeu_si128((simde__m128i*)&code_len[i], simde_mm_add_epi8(v, simde_mm_set1_epi8(1)));
     }
-    _mm_storeu_si128((__m128i*)&code_len[num_symbols], bak);
-    if (_mm_movemask_epi8(_mm_cmpeq_epi8(max_codeword_len, _mm_set1_epi8(10))) != 0xffff)
+    simde_mm_storeu_si128((simde__m128i*)&code_len[num_symbols], bak);
+    if (simde_mm_movemask_epi8(simde_mm_cmpeq_epi8(max_codeword_len, simde_mm_set1_epi8(10))) != 0xffff)
       return -1; // codeword too big?
   }
 
@@ -3273,9 +3273,9 @@ bool Leviathan_ProcessLz(LeviathanLzTable *lzt, uint8 *dst,
     offset = recent_offs[(size_t)offs_index + 8];
 
     // Permute the recent offsets table
-    __m128i temp = _mm_loadu_si128((const __m128i *)&recent_offs[(size_t)offs_index + 4]);
-    _mm_storeu_si128((__m128i *)&recent_offs[(size_t)offs_index + 1], _mm_loadu_si128((const __m128i *)&recent_offs[offs_index]));
-    _mm_storeu_si128((__m128i *)&recent_offs[(size_t)offs_index + 5], temp);
+    simde__m128i temp = simde_mm_loadu_si128((const simde__m128i *)&recent_offs[(size_t)offs_index + 4]);
+    simde_mm_storeu_si128((simde__m128i *)&recent_offs[(size_t)offs_index + 1], simde_mm_loadu_si128((const simde__m128i *)&recent_offs[offs_index]));
+    simde_mm_storeu_si128((simde__m128i *)&recent_offs[(size_t)offs_index + 5], temp);
     recent_offs[8] = (int32)offset;
     offs_stream += offs_index == 7;
 
@@ -3674,7 +3674,7 @@ const byte *Mermaid_Mode0(byte *dst, size_t dst_size, byte *dst_ptr_end, byte *d
       COPY_64(dst + 16, match + 16);
       COPY_64(dst + 24, match + 24);
       dst += length;
-      _mm_prefetch((char*)dst_begin - off32_stream[3], _MM_HINT_T0);
+      simde_mm_prefetch((char*)dst_begin - off32_stream[3], SIMDE_MM_HINT_T0);
     } else if (cmd == 0) {
       if (src_end - length_stream == 0)
         return NULL;
@@ -3750,7 +3750,7 @@ const byte *Mermaid_Mode0(byte *dst, size_t dst_size, byte *dst_ptr_end, byte *d
         length -= 16;
       } while (length > 0);
       dst += length;
-      _mm_prefetch((char*)dst_begin - off32_stream[3], _MM_HINT_T0);
+      simde_mm_prefetch((char*)dst_begin - off32_stream[3], SIMDE_MM_HINT_T0);
     }
   }
 
@@ -3826,7 +3826,7 @@ const byte *Mermaid_Mode1(byte *dst, size_t dst_size, byte *dst_ptr_end, byte *d
       COPY_64(dst + 16, match + 16);
       COPY_64(dst + 24, match + 24);
       dst += length;
-      _mm_prefetch((char*)dst_begin - off32_stream[3], _MM_HINT_T0);
+      simde_mm_prefetch((char*)dst_begin - off32_stream[3], SIMDE_MM_HINT_T0);
     } else if (flag == 0) {
       if (src_end - length_stream == 0)
         return NULL;
@@ -3905,7 +3905,7 @@ const byte *Mermaid_Mode1(byte *dst, size_t dst_size, byte *dst_ptr_end, byte *d
       } while (length > 0);
       dst += length;
 
-      _mm_prefetch((char*)dst_begin - off32_stream[3], _MM_HINT_T0);
+      simde_mm_prefetch((char*)dst_begin - off32_stream[3], SIMDE_MM_HINT_T0);
     }
   }
 
