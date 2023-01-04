@@ -17,6 +17,10 @@
 #define SIMDE_ENABLE_NATIVE_ALIASES 1
 #include <simde/x86/sse2.h>
 
+#if defined(__x86_64__) || defined(_M_X64)
+#include <x86gprintrin.h>
+#endif
+
 #if defined(_MSC_VER)
 #include <Windows.h>
 #undef max
@@ -30,9 +34,11 @@
 #define _BitScanForward(dst, x) (*(dst) = __builtin_ctz(x))
 #define _BitScanReverse(dst, x) (*(dst) = (__builtin_clz(x) ^ 31))
 
+#if !defined(__x86_64__) && !defined(_M_X64)
 static inline uint32_t _rotl(uint32_t x, int n) {
   return (((x) << (n)) | ((x) >> (32-(n))));
 }
+#endif
 #endif
 
 #pragma warning (disable: 4244)
