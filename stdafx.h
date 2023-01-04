@@ -17,7 +17,7 @@
 #include <simde/x86/sse2.h>
 
 #if defined(__x86_64__) || defined(_M_X64)
-#include <x86gprintrin.h>
+#include <xmmintrin.h>
 #endif
 
 #if defined(_MSC_VER)
@@ -33,7 +33,9 @@
 #define _BitScanForward(dst, x) (*(dst) = __builtin_ctz(x))
 #define _BitScanReverse(dst, x) (*(dst) = (__builtin_clz(x) ^ 31))
 
-#if !defined(__x86_64__) && !defined(_M_X64)
+#if __has_include(<x86gprintrin.h>)
+#include <x86gprintrin.h>
+#else
 static inline uint32_t _rotl(uint32_t x, int n) {
   return (((x) << (n)) | ((x) >> (32-(n))));
 }
