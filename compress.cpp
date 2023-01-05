@@ -149,18 +149,22 @@ void SubtractBytesUnsafe(uint8 *dst, const uint8 *src, size_t len, size_t neg_of
   if (len > 8) {
     size_t loops = (len + 7) / 16;
     do {
-      _mm_storeu_si128((__m128i *)dst, _mm_sub_epi8(_mm_loadu_si128((const __m128i *)src),
-                                                    _mm_loadu_si128((const __m128i *)&src[neg_offs])));
+      simde_mm_storeu_si128((simde__m128i *)dst,
+                       simde_mm_sub_epi8(simde_mm_loadu_si128((const simde__m128i *)src),
+                                         simde_mm_loadu_si128((const simde__m128i *)&src[neg_offs])));
       src += 16, dst += 16;
     } while (--loops);
   }
-  _mm_storel_epi64((__m128i *)dst, _mm_sub_epi8(_mm_loadl_epi64((const __m128i *)src),
-                                                _mm_loadl_epi64((const __m128i *)&src[neg_offs])));
+  simde_mm_storel_epi64((simde__m128i *)dst,
+                   simde_mm_sub_epi8(simde_mm_loadl_epi64((const simde__m128i *)src),
+                                     simde_mm_loadl_epi64((const simde__m128i *)&src[neg_offs])));
 }
 
 void SubtractBytes(uint8 *dst, const uint8 *src, size_t len, size_t neg_offs) {
   for (; len >= 16; len -= 16, src += 16, dst += 16)
-    _mm_storeu_si128((__m128i *)dst, _mm_sub_epi8(_mm_loadu_si128((const __m128i *)src), _mm_loadu_si128((const __m128i *)&src[neg_offs])));
+    simde_mm_storeu_si128((simde__m128i *)dst,
+                     simde_mm_sub_epi8(simde_mm_loadu_si128((const simde__m128i *)src),
+                                       simde_mm_loadu_si128((const simde__m128i *)&src[neg_offs])));
   for (; len; len--, src++, dst++)
     dst[0] = src[0] - src[neg_offs];
 }

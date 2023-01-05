@@ -662,7 +662,7 @@ int EncodeLzOffsets(uint8 *dst, uint8 *dst_end, uint8 *u8_offs, uint32 *u32_offs
 
 static void EncodeSubModeForBytes(uint8 *dst, const uint8 *src, size_t len, ptrdiff_t recent0) {
   for (; len >= 16; len -= 16, src += 16, dst += 16)
-    _mm_storeu_si128((__m128i *)dst, _mm_sub_epi8(_mm_loadu_si128((const __m128i *)src), _mm_loadu_si128((const __m128i *)&src[-recent0])));
+    simde_mm_storeu_si128((simde__m128i *)dst, simde_mm_sub_epi8(simde_mm_loadu_si128((const simde__m128i *)src), simde_mm_loadu_si128((const simde__m128i *)&src[-recent0])));
   for (; len; len--, src++, dst++)
     dst[0] = src[0] - src[-recent0];
 }
@@ -1319,11 +1319,11 @@ static __forceinline bool UpdateState(int state_entry, int bits, int lrl, int ml
       temp[12] = recent_offs_ptr[4];
       temp[13] = recent_offs_ptr[5];
       temp[14] = recent_offs_ptr[6];
-      __m128i t0 = _mm_loadu_si128((const __m128i *)&temp[recent]),
-        t1 = _mm_loadu_si128((const __m128i *)&temp[recent + 4]);
+      simde__m128i t0 = simde_mm_loadu_si128((const simde__m128i *)&temp[recent]),
+        t1 = simde_mm_loadu_si128((const simde__m128i *)&temp[recent + 4]);
       st->recent_offs[0] = temp[recent + 8];
-      _mm_storeu_si128((__m128i *)&temp[recent + 1], t0);
-      _mm_storeu_si128((__m128i *)&temp[recent + 5], t1);
+      simde_mm_storeu_si128((simde__m128i *)&temp[recent + 1], t0);
+      simde_mm_storeu_si128((simde__m128i *)&temp[recent + 5], t1);
       st->recent_offs[1] = temp[9];
       st->recent_offs[2] = temp[10];
       st->recent_offs[3] = temp[11];

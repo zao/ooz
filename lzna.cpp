@@ -226,35 +226,35 @@ static uint32 __forceinline LznaReadNBits(LznaBitReader *tab, int bits) {
 
 // Read a 4-bit value using an adaptive RANS model
 static uint32 __forceinline LznaReadNibble(LznaBitReader *tab, LznaNibbleModel *model) {
-  __m128i t, t0, t1, c0, c1;
+  simde__m128i t, t0, t1, c0, c1;
   unsigned long bitindex;
   unsigned int start, end;
   uint64 x = tab->bits_a;
 
-  t0 = _mm_loadu_si128((const __m128i *)&model->prob[0]);
-  t1 = _mm_loadu_si128((const __m128i *)&model->prob[8]);
+  t0 = simde_mm_loadu_si128((const simde__m128i *)&model->prob[0]);
+  t1 = simde_mm_loadu_si128((const simde__m128i *)&model->prob[8]);
 
-  t = _mm_cvtsi32_si128((int16)x);
-  t = _mm_and_si128(_mm_shuffle_epi32(_mm_unpacklo_epi16(t, t), 0), _mm_set1_epi16(0x7FFF));
+  t = simde_mm_cvtsi32_si128((int16)x);
+  t = simde_mm_and_si128(simde_mm_shuffle_epi32(simde_mm_unpacklo_epi16(t, t), 0), simde_mm_set1_epi16(0x7FFF));
 
-  c0 = _mm_cmpgt_epi16(t0, t);
-  c1 = _mm_cmpgt_epi16(t1, t);
+  c0 = simde_mm_cmpgt_epi16(t0, t);
+  c1 = simde_mm_cmpgt_epi16(t1, t);
 
-  _BitScanForward(&bitindex, _mm_movemask_epi8(_mm_packs_epi16(c0, c1)) | 0x10000);
+  _BitScanForward(&bitindex, simde_mm_movemask_epi8(simde_mm_packs_epi16(c0, c1)) | 0x10000);
   start = model->prob[bitindex - 1];
   end = model->prob[bitindex];
 
-  c0 = _mm_and_si128(_mm_set1_epi16(0x7FD9), c0);
-  c1 = _mm_and_si128(_mm_set1_epi16(0x7FD9), c1);
+  c0 = simde_mm_and_si128(simde_mm_set1_epi16(0x7FD9), c0);
+  c1 = simde_mm_and_si128(simde_mm_set1_epi16(0x7FD9), c1);
 
-  c0 = _mm_add_epi16(c0, _mm_set_epi16(56, 48, 40, 32, 24, 16, 8, 0));
-  c1 = _mm_add_epi16(c1, _mm_set_epi16(120, 112, 104, 96, 88, 80, 72, 64));
+  c0 = simde_mm_add_epi16(c0, simde_mm_set_epi16(56, 48, 40, 32, 24, 16, 8, 0));
+  c1 = simde_mm_add_epi16(c1, simde_mm_set_epi16(120, 112, 104, 96, 88, 80, 72, 64));
 
-  t0 = _mm_add_epi16(_mm_srai_epi16(_mm_sub_epi16(c0, t0), 7), t0);
-  t1 = _mm_add_epi16(_mm_srai_epi16(_mm_sub_epi16(c1, t1), 7), t1);
+  t0 = simde_mm_add_epi16(simde_mm_srai_epi16(simde_mm_sub_epi16(c0, t0), 7), t0);
+  t1 = simde_mm_add_epi16(simde_mm_srai_epi16(simde_mm_sub_epi16(c1, t1), 7), t1);
 
-  _mm_storeu_si128((__m128i *)&model->prob[0], t0);
-  _mm_storeu_si128((__m128i *)&model->prob[8], t1);
+  simde_mm_storeu_si128((simde__m128i *)&model->prob[0], t0);
+  simde_mm_storeu_si128((simde__m128i *)&model->prob[8], t1);
 
   tab->bits_a = (end - start) * (x >> 15) + (x & 0x7FFF) - start;
   LznaRenormalize(tab);
@@ -263,25 +263,25 @@ static uint32 __forceinline LznaReadNibble(LznaBitReader *tab, LznaNibbleModel *
 
 // Read a 3-bit value using an adaptive RANS model
 static uint32 __forceinline LznaRead3bit(LznaBitReader *tab, Lzna3bitModel *model) {
-  __m128i t, t0, c0;
+  simde__m128i t, t0, c0;
   unsigned long bitindex;
   unsigned int start, end;
   uint64 x = tab->bits_a;
 
-  t0 = _mm_loadu_si128((const __m128i *)&model->prob[0]);
-  t = _mm_cvtsi32_si128(x & 0x7FFF);
-  t = _mm_shuffle_epi32(_mm_unpacklo_epi16(t, t), 0);
-  c0 = _mm_cmpgt_epi16(t0, t);
+  t0 = simde_mm_loadu_si128((const simde__m128i *)&model->prob[0]);
+  t = simde_mm_cvtsi32_si128(x & 0x7FFF);
+  t = simde_mm_shuffle_epi32(simde_mm_unpacklo_epi16(t, t), 0);
+  c0 = simde_mm_cmpgt_epi16(t0, t);
 
-  _BitScanForward(&bitindex, _mm_movemask_epi8(c0) | 0x10000);
+  _BitScanForward(&bitindex, simde_mm_movemask_epi8(c0) | 0x10000);
   bitindex >>= 1;
   start = model->prob[bitindex - 1];
   end = model->prob[bitindex];
 
-  c0 = _mm_and_si128(_mm_set1_epi16(0x7FE5), c0);
-  c0 = _mm_add_epi16(c0, _mm_set_epi16(56, 48, 40, 32, 24, 16, 8, 0));
-  t0 = _mm_add_epi16(_mm_srai_epi16(_mm_sub_epi16(c0, t0), 7), t0);
-  _mm_storeu_si128((__m128i *)&model->prob[0], t0);
+  c0 = simde_mm_and_si128(simde_mm_set1_epi16(0x7FE5), c0);
+  c0 = simde_mm_add_epi16(c0, simde_mm_set_epi16(56, 48, 40, 32, 24, 16, 8, 0));
+  t0 = simde_mm_add_epi16(simde_mm_srai_epi16(simde_mm_sub_epi16(c0, t0), 7), t0);
+  simde_mm_storeu_si128((simde__m128i *)&model->prob[0], t0);
 
   tab->bits_a = (end - start) * (x >> 15) + (x & 0x7FFF) - start;
   LznaRenormalize(tab);
