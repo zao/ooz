@@ -64,6 +64,7 @@ endif()
 if (OOZ_BUILD_BUN)
     add_library(bunutil STATIC
         "fnv.cpp" "fnv.h"
+        "murmur.cpp" "murmur.h"
         "util.cpp" "util.h"
         "utf.cpp" "utf.h"
         )

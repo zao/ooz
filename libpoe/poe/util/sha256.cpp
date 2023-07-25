@@ -16,6 +16,7 @@ namespace poe::util {
 		char* p = buf;
 		for (auto b : digest) {
 			sprintf(p, "%02x", b);
+			p += 2;
 		}
 		return buf;
 	}
