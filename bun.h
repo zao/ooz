@@ -68,6 +68,7 @@ extern "C" {
 		uint64_t* hash, uint32_t* offset, uint32_t* size, uint32_t* recursive_size);
 
 	BUN_DLL_PUBLIC BunMem BunIndexPathRepContents(BunIndex const* idx);
+    BUN_DLL_PUBLIC int BunIndexPathRepLowercase(BunIndex const *idx);
 
 	BUN_DLL_PUBLIC int32_t BunIndexBundleCount(BunIndex* idx);
 	BUN_DLL_PUBLIC int32_t BunIndexBundleIdByName(BunIndex* idx, char const* name);
