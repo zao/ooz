@@ -65,6 +65,7 @@ if (OOZ_BUILD_BUN)
     add_library(bunutil STATIC
         "fnv.cpp" "fnv.h"
         "murmur.cpp" "murmur.h"
+        "path_rep.cpp" "path_rep.h"
         "util.cpp" "util.h"
         "utf.cpp" "utf.h"
         )
@@ -88,7 +89,7 @@ if (OOZ_BUILD_BUN)
 
     add_subdirectory(libpoe)
 
-    add_executable(bun_extract_file "bun_extract_file.cpp" "path_rep.cpp" "path_rep.h" "ggpk_vfs.cpp" "ggpk_vfs.h")
+    add_executable(bun_extract_file "bun_extract_file.cpp" "ggpk_vfs.cpp" "ggpk_vfs.h")
     target_link_libraries(bun_extract_file PRIVATE libbun libpoe)
     if (UNIX)
         target_link_libraries(bun_extract_file PRIVATE "-lstdc++fs")

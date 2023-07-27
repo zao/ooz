@@ -16,6 +16,7 @@
 
 #include "fnv.h"
 #include "murmur.h"
+#include "path_rep.h"
 #include "util.h"
 
 #ifdef _WIN32
@@ -77,6 +78,32 @@ struct BunIndex {
     HashAlgorithm hash_algorithm_;
     uint64_t hash_seed_;
 };
+
+inline uint64_t hash_path_3_21_2(std::string path, uint64_t seed) {
+    while (path.back() == '/') {
+      path.pop_back();
+    }
+    for (auto &ch : path) {
+      ch = (char)std::tolower((int)(unsigned char)ch);
+    }
+    return murmur_hash_64a(path.c_str(), (int)path.size(), seed);
+}
+
+inline uint64_t hash_directory_3_11_2(std::string path) {
+    while (path.back() == '/') {
+      path.pop_back();
+    }
+    path += "++";
+    return fnv1a_64(path.data(), path.size());
+}
+
+inline uint64_t hash_file_3_11_2(std::string path) {
+    for (auto &ch : path) {
+      ch = (char)std::tolower((int)(unsigned char)ch);
+    }
+    path += "++";
+    return fnv1a_64(path.data(), path.size());
+}
 
 bool BunIndex::read_file(char const *path, std::vector<uint8_t> &out) {
     std::string full_path = bundle_root_ + '/' + path;
@@ -269,23 +296,53 @@ BUN_DLL_PUBLIC BunIndex *BunIndexOpen(Bun *bun, Vfs *vfs, char const *root_dir) 
         idx->path_rep_infos_.push_back(si);
     }
 
-    idx->hash_algorithm_ = HashAlgorithm::Unknown;
-    idx->hash_seed_ = 0;
-    if (some_count) {
-        switch (idx->path_rep_infos_[0].hash) {
-        case 0x07e47507b4a92e53:
-            idx->hash_algorithm_ = HashAlgorithm::FNV1A_3_11_2;
-            break;
-        case 0xf42a94e69cff42fe:
-            idx->hash_algorithm_ = HashAlgorithm::MurmurHash2A_3_21_2;
-            idx->hash_seed_ = 0x1337b33f;
-            break;
-        }
-    }
-
     auto inner_mem = BunDecompressBundleAlloc(idx->bun_, r.p_, r.n_);
     idx->inner_mem_ = inner_mem;
     fprintf(stderr, "Decompressed inner size: %lld\n", BunMemSize(inner_mem));
+
+    idx->hash_algorithm_ = HashAlgorithm::Unknown;
+    idx->hash_seed_ = 0;
+    if (some_count) {
+        auto root_hash = idx->path_rep_infos_[0].hash;
+        switch (root_hash) {
+        case 0x07e47507b4a92e53:
+            idx->hash_algorithm_ = HashAlgorithm::FNV1A_3_11_2;
+            break;
+        default: {
+            // Recover seed from root hash via math wizardry
+            auto h = root_hash;
+            h ^= h >> 47;
+            h *= 0x5F7A0EA7E59B19BDULL;
+            h ^= h >> 47;
+            bool seed_validated = true;
+            for (int i = 1; i < idx->path_rep_infos_.size(); ++i) {
+                auto &ref = idx->path_rep_infos_[i];
+                auto results = generate_paths(inner_mem + ref.offset, ref.size);
+                if (!results.empty()) {
+                  auto &r = results[0];
+                  auto slash_pos = r.find_last_of('/');
+                  if (slash_pos != r.npos) {
+                    auto dir = r.substr(0, slash_pos);
+                    auto computed_hash = hash_path_3_21_2(dir, h);
+                    seed_validated = (computed_hash == ref.hash);
+                    break;
+                  }
+                }
+            }
+            if (seed_validated) {
+                idx->hash_algorithm_ = HashAlgorithm::MurmurHash2A_3_21_2;
+                idx->hash_seed_ = h;
+                fprintf(stderr, "Hash seed: 0x%016llx\n", idx->hash_seed_);
+            }
+            break;
+        }
+        }
+    }
+
+    if (idx->hash_algorithm_ == HashAlgorithm::Unknown) {
+        fprintf(stderr, "Could not detect path hash algorithm/seed\n");
+        return nullptr;
+    }
 
     return idx.release();
 }
@@ -295,32 +352,6 @@ BUN_DLL_PUBLIC void BunIndexClose(BunIndex *idx) {
         BunMemFree(idx->index_mem_);
         BunMemFree(idx->inner_mem_);
     }
-}
-
-uint64_t hash_path_3_21_2(std::string path, uint64_t seed) {
-    while (path.back() == '/') {
-        path.pop_back();
-    }
-    for (auto &ch : path) {
-        ch = (char)std::tolower((int)(unsigned char)ch);
-    }
-    return murmur_hash_64a(path.c_str(), (int)path.size(), seed);
-}
-
-uint64_t hash_directory_3_11_2(std::string path) {
-    while (path.back() == '/') {
-        path.pop_back();
-    }
-    path += "++";
-    return fnv1a_64(path.data(), path.size());
-}
-
-uint64_t hash_file_3_11_2(std::string path) {
-    for (auto &ch : path) {
-        ch = (char)std::tolower((int)(unsigned char)ch);
-    }
-    path += "++";
-    return fnv1a_64(path.data(), path.size());
 }
 
 BUN_DLL_PUBLIC int32_t BunIndexLookupFileByPath(BunIndex *idx, char const *path) {
