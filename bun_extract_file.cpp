@@ -177,12 +177,12 @@ int main(int argc, char *argv[]) {
 
   struct extract_info {
     std::string path;
-    uint32_t offset;
-    uint32_t size;
+    uint32_t offset{};
+    uint32_t size{};
   };
 
   std::unordered_map<uint32_t, std::vector<extract_info>> bundle_parts_to_extract;
-  for (auto path : wanted_paths) {
+  for (auto &path : wanted_paths) {
     if (path.front() == '"' && path.back() == '"') {
       path = path.substr(1, path.size() - 2);
     }
@@ -190,12 +190,13 @@ int main(int argc, char *argv[]) {
     int32_t file_id = BunIndexLookupFileByPath(idx, path.c_str());
     if (file_id < 0) {
       fprintf(stderr, "Could not find file \"%s\"\n", path.c_str());
+      continue;
     }
 
-    uint32_t bundle_id;
+    uint32_t bundle_id{};
 
-    uint64_t path_hash;
-    extract_info ei;
+    uint64_t path_hash{};
+    extract_info ei{};
     ei.path = path;
 
     BunIndexFileInfo(idx, file_id, &path_hash, &bundle_id, &ei.offset, &ei.size);
