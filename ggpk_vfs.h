@@ -9,5 +9,5 @@ namespace ggpk = poe::format::ggpk;
 
 struct GgpkVfs;
 
-std::shared_ptr<GgpkVfs> open_ggpk(std::filesystem::path path);
+std::shared_ptr<GgpkVfs> open_ggpk(std::filesystem::path path, bool mmap_data = false);
 Vfs* borrow_vfs(std::shared_ptr<GgpkVfs>& vfs);
