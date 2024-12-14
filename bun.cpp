@@ -674,11 +674,15 @@ int64_t BunDecompressBundle(Bun *bun, uint8_t const *src_data, size_t src_size, 
     size_t out_cur = 0;
     for (size_t i = 0; i < entry_sizes.size(); ++i) {
         size_t amount_to_write = (std::min<size_t>)(fix_h.uncompressed_size2 - out_cur, fix_h.unk28[0]);
-        // int64_t amount_written = BunDecompressBlock(bun, p, entry_sizes[i], out_p + out_cur, amount_to_write);
-        auto mem = BunDecompressBlockAlloc(bun, p, entry_sizes[i], amount_to_write);
-        auto amount_written = mem ? amount_to_write : 0;
-        memcpy(out_p + out_cur, mem, amount_written);
-        BunMemFree(mem);
+        int64_t amount_written{};
+        if (out_cur + amount_to_write + SAFE_SPACE < dst_size)
+            amount_written = BunDecompressBlock(bun, p, entry_sizes[i], out_p + out_cur, amount_to_write);
+        else {
+            auto mem = BunDecompressBlockAlloc(bun, p, entry_sizes[i], amount_to_write);
+            amount_written = mem ? amount_to_write : 0;
+            memcpy(out_p + out_cur, mem, amount_written);
+            BunMemFree(mem);
+        }
         p += entry_sizes[i];
         n -= entry_sizes[i];
         out_cur += amount_to_write;
