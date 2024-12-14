@@ -24,6 +24,13 @@ static char const *const USAGE =
     "If FILE_PATHS are omitted the file paths are taken from stdin.\n"
     "If --regex is given, FILE_PATHS are interpreted as regular expressions to match.\n";
 
+struct fs_node {
+  std::map<std::string_view, std::unique_ptr<fs_node>> children;
+
+  void record_file_path(std::string_view path);
+  void create_directories(std::filesystem::path const &base) const;
+};
+
 int main(int argc, char *argv[]) {
   std::error_code ec;
   if (argc < 2 || argv[1] == "--help"sv || argv[1] == "-h"sv) {
@@ -115,6 +122,7 @@ int main(int argc, char *argv[]) {
 
   std::vector<std::string> wanted_paths = tail_args;
   if (wanted_paths.empty()) {
+    fprintf(stderr, "No patterns found in command line; reading from stdin, end with EOF (Ctrl-Z + Enter on Windows, Ctrl-D elsewhere):\n");
     std::string line;
     while (std::getline(std::cin, line)) {
       wanted_paths.push_back(line);
@@ -175,8 +183,10 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  fs_node root;
+
   struct extract_info {
-    std::string path;
+    std::string_view path;
     uint32_t offset{};
     uint32_t size{};
   };
@@ -201,8 +211,15 @@ int main(int argc, char *argv[]) {
 
     BunIndexFileInfo(idx, file_id, &path_hash, &bundle_id, &ei.offset, &ei.size);
     bundle_parts_to_extract[bundle_id].push_back(ei);
+
+    root.record_file_path(path);
   }
 
+  fprintf(stderr, "Creating directories...\n");
+  std::filesystem::create_directories(output_dir, ec);
+  root.create_directories(output_dir);
+
+  fprintf(stderr, "Extracting files...\n");
   size_t extracted = 0;
   size_t missed = 0;
   for (auto &[bundle_id, parts] : bundle_parts_to_extract) {
@@ -218,7 +235,6 @@ int main(int argc, char *argv[]) {
     }
     for (auto &part : parts) {
       std::filesystem::path output_path = output_dir / part.path;
-      std::filesystem::create_directories(output_path.parent_path(), ec);
       if (!dump_file(output_path, bundle_mem + part.offset, part.size)) {
         fprintf(stderr, "Could not write file \"%s\"\n", output_path.string().c_str());
         ++missed;
@@ -233,4 +249,40 @@ int main(int argc, char *argv[]) {
   BunDelete(bun);
 
   return 0;
+}
+
+void fs_node::record_file_path(std::string_view path) {
+  {
+    fs_node *cur_node = this;
+    size_t comp_start = 0;
+    while (true) {
+      std::string_view comp;
+      if (auto pos = path.find_first_of("/\\", comp_start); pos != path.npos) {
+        comp = path.substr(comp_start, pos - comp_start);
+      } else {
+        break; // if there's no more slashes we've reached the filename and should stop.
+      }
+      comp_start = comp_start + comp.size() + 1;
+      if (comp.empty())
+        continue;
+      auto &children = cur_node->children;
+      fs_node *next_node{};
+      if (auto next_iter = children.find(comp); next_iter != children.end()) {
+        next_node = next_iter->second.get();
+      } else {
+        auto new_node = std::make_unique<fs_node>();
+        next_node = new_node.get();
+        children.insert({comp, std::move(new_node)});
+      }
+      cur_node = next_node;
+    }
+  }
+}
+
+void fs_node::create_directories(std::filesystem::path const &base) const {
+  for (auto &[child_name, child_node] : children) {
+    std::filesystem::path child_path = base / child_name;
+    std::filesystem::create_directory(child_path);
+    child_node->create_directories(child_path);
+  }
 }
