@@ -42,6 +42,7 @@ int main(int argc, char *argv[]) {
   std::filesystem::path ggpk_or_steam_dir;
   std::filesystem::path output_dir;
   bool use_regex = false;
+  bool use_mmap = false;
   std::vector<std::string> tail_args;
 
   command = argv[1];
@@ -50,6 +51,12 @@ int main(int argc, char *argv[]) {
   while (argi < argc) {
     if (argv[argi] == "--regex"sv) {
       use_regex = true;
+      ++argi;
+    } else if (argv[argi] == "--mmap"sv) {
+      use_mmap = true;
+      ++argi;
+    } else if (argv[argi] == "--no-mmap"sv) {
+      use_mmap = false;
       ++argi;
     } else {
       break;
@@ -79,7 +86,7 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<GgpkVfs> vfs;
   if (ggpk_or_steam_dir.extension() == ".ggpk") {
-    vfs = open_ggpk(ggpk_or_steam_dir);
+    vfs = open_ggpk(ggpk_or_steam_dir, use_mmap);
   }
 
 #if _WIN32
