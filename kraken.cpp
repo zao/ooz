@@ -4192,6 +4192,19 @@ extern "C" {
     }
 }
 
+struct CompressOptions;
+struct LRMCascade;
+
+int CompressBlock(int codec_id, uint8 *src_in, uint8 *dst_in, int src_size, int level,
+                  const CompressOptions *compressopts, uint8 *src_window_base, LRMCascade *lrm);
+
+extern "C" {
+OOZ_DLL_PUBLIC int Ooz_Compress(int compressor, const uint8_t *src_buf, int src_len, uint8_t *dst_buf,
+                                size_t dst_capacity, int level) {
+  return CompressBlock(compressor, (uint8_t *)src_buf, dst_buf, src_len, level, nullptr, nullptr, nullptr);
+}
+}
+
 // The decompressor will write outside of the target buffer.
 #define SAFE_SPACE 64
 
