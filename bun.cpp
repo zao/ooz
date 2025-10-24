@@ -1,9 +1,10 @@
 #include "bun.h"
 
-#include <stddef.h>
-#include <string.h>
-
 #include <algorithm>
+#include <cassert>
+#include <cinttypes>
+#include <cstddef>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -228,7 +229,7 @@ BUN_DLL_PUBLIC BunIndex *BunIndexOpen(Bun *bun, Vfs *vfs, char const *root_dir) 
         fprintf(stderr, "Could not decompress _.index.bin\n");
         return nullptr;
     }
-    fprintf(stderr, "Index bundle decompressed, %lld bytes\n", BunMemSize(index_bin_mem));
+    fprintf(stderr, "Index bundle decompressed, %" PRId64 " bytes\n", BunMemSize(index_bin_mem));
     idx->index_mem_ = index_bin_mem;
 
     uint32_t bundle_count;
@@ -298,7 +299,7 @@ BUN_DLL_PUBLIC BunIndex *BunIndexOpen(Bun *bun, Vfs *vfs, char const *root_dir) 
 
     auto inner_mem = BunDecompressBundleAlloc(idx->bun_, r.p_, r.n_);
     idx->inner_mem_ = inner_mem;
-    fprintf(stderr, "Decompressed inner size: %lld\n", BunMemSize(inner_mem));
+    fprintf(stderr, "Decompressed inner size: %" PRId64 "\n", BunMemSize(inner_mem));
 
     idx->hash_algorithm_ = HashAlgorithm::Unknown;
     idx->hash_seed_ = 0;
@@ -332,7 +333,7 @@ BUN_DLL_PUBLIC BunIndex *BunIndexOpen(Bun *bun, Vfs *vfs, char const *root_dir) 
             if (seed_validated) {
                 idx->hash_algorithm_ = HashAlgorithm::MurmurHash2A_3_21_2;
                 idx->hash_seed_ = h;
-                fprintf(stderr, "Hash seed: 0x%016llx\n", idx->hash_seed_);
+                fprintf(stderr, "Hash seed: 0x%016" PRIx64 "\n", idx->hash_seed_);
             }
             break;
         }
@@ -559,6 +560,7 @@ void BunMemShrink(BunMem mem, int64_t new_size) {
         size_t const header_size = sizeof(BunMemHeader);
         BunMemHeader h;
         memcpy(&h, header_ptr, header_size);
+        assert(h >= new_size);
         if (h >= new_size) {
             h = new_size;
             memcpy(header_ptr, &h, header_size);
@@ -574,58 +576,17 @@ void BunMemFree(BunMem mem) {
     delete[] p;
 }
 
-#ifdef _WIN32
-uint8_t *ro_clone(uint8_t const *src_data, size_t src_size) {
-    auto *mem = (uint8_t *)malloc(src_size);
-    memcpy(mem, src_data, src_size);
-    return mem;
-}
-
-void ro_free(uint8_t *s, size_t src_size) { free(s); }
-#else
-uint8_t *ro_clone(uint8_t const *src_data, size_t src_size) {
-    auto page_size = sysconf(_SC_PAGESIZE);
-    auto pages = (src_size + page_size - 1) / page_size;
-    auto rounded_src_size = (pages + 1) * page_size;
-    auto *s = (uint8_t *)aligned_alloc(page_size, rounded_src_size);
-    memcpy(s, src_data, src_size);
-    mprotect(s + pages * page_size, page_size, PROT_READ);
-    return s;
-}
-
-void ro_free(uint8_t *s, size_t src_size) {
-    auto page_size = sysconf(_SC_PAGESIZE);
-    auto pages = (src_size + page_size - 1) / page_size;
-    auto rounded_src_size = (pages + 1) * page_size;
-    mprotect(s + pages * page_size, page_size, PROT_READ | PROT_WRITE);
-    free(s);
-}
-#endif
-
 int BunDecompressBlock(Bun *bun, uint8_t const *src_data, size_t src_size, uint8_t *dst_data, size_t dst_size) {
-    auto *s = ro_clone(src_data, src_size);
-    int res = bun->decompress_fun_(s, (int)src_size, dst_data, (int)dst_size, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    ro_free(s, src_size);
+    int res = bun->decompress_fun_(src_data, (int)src_size, dst_data, (int)dst_size, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     return res;
 }
 
 BunMem BunDecompressBlockAlloc(Bun *bun, uint8_t const *src_data, size_t src_size, size_t dst_size) {
     BunMem mem = BunMemAlloc(dst_size + SAFE_SPACE);
-    for (size_t i = 0; i < SAFE_SPACE; ++i) {
-        mem[dst_size + i] = 0xCD;
-    }
-    auto *s = ro_clone(src_data, src_size);
-    int res = bun->decompress_fun_(s, (int)src_size, mem, (int)dst_size, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    ro_free(s, src_size);
+    int res = bun->decompress_fun_(src_data, (int)src_size, mem, (int)dst_size, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     if (res != dst_size) {
         BunMemFree(mem);
         return nullptr;
-    }
-    for (size_t i = 0; i < SAFE_SPACE; ++i) {
-        if (mem[dst_size + i] != 0xCD) {
-            // fprintf(stderr, "Decompress function clobbered safe space at byte %zu\n", i);
-            // fflush(stderr);
-        }
     }
     BunMemShrink(mem, dst_size);
     return mem;
