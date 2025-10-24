@@ -1,5 +1,8 @@
 #include "util.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 #include <fstream>
 
 std::string hex_dump(size_t width, void const* data, size_t size) {
@@ -33,7 +36,7 @@ std::string hex_dump(size_t width, void const* data, size_t size) {
 	return s;
 }
 
-bool slurp_file(std::filesystem::path path, std::vector<uint8_t>& data) {
+bool slurp_file(const std::filesystem::path& path, std::vector<uint8_t>& data) {
 	std::ifstream is(path, std::ios::binary);
 	if (!is) {
 		return false;
@@ -50,10 +53,30 @@ bool slurp_file(std::filesystem::path path, std::vector<uint8_t>& data) {
 	return true;
 }
 
-bool dump_file(std::filesystem::path filename, void const* data, size_t size) {
+bool dump_file(const std::filesystem::path& filename, void const* data, size_t size) {
+#if _WIN32
+  HANDLE fh = CreateFileW(filename.wstring().c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (!fh)
+    return false;
+  auto* data_ptr = (const char *)data;
+  size_t remaining = size;
+  while (remaining) {
+    DWORD chunk_size = (DWORD)(std::min)(remaining, 1ull << 20);
+    DWORD bytes_written{};
+    if (!WriteFile(fh, data_ptr, chunk_size, &bytes_written, nullptr)) {
+      CloseHandle(fh);
+      return false;
+    }
+    remaining -= bytes_written;
+    data_ptr += bytes_written;
+  }
+  CloseHandle(fh);
+  return true;
+#else
 	std::ofstream os(filename, std::ios::binary | std::ios::trunc);
 	if (!os) {
 		return false;
 	}
 	return !!os.write(reinterpret_cast<char const*>(data), size);
+#endif
 }

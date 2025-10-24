@@ -74,6 +74,8 @@ extern "C" {
 	BUN_DLL_PUBLIC int32_t BunIndexBundleIdByName(BunIndex* idx, char const* name);
 	BUN_DLL_PUBLIC int32_t BunIndexBundleFileCount(BunIndex* idx, int32_t bundle_id);
 	BUN_DLL_PUBLIC BunMem BunIndexBundleName(BunIndex* idx, int32_t bundle_id);
+	BUN_DLL_PUBLIC int BunIndexBundleExistsOnDisk(BunIndex const *idx, int32_t bundle_info_id);
+
 
 	BUN_DLL_PUBLIC int32_t BunIndexBundleFileOffset(BunIndex* idx, int32_t bundle_id, int32_t file_id);
 	BUN_DLL_PUBLIC int32_t BunIndexBundleFileSize(BunIndex* idx, int32_t bundle_id, int32_t file_id);

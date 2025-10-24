@@ -7,8 +7,8 @@
 
 std::string hex_dump(size_t width, void const* data, size_t size);
 
-bool slurp_file(std::filesystem::path path, std::vector<uint8_t>& data);
-bool dump_file(std::filesystem::path filename, void const* data, size_t size);
+bool slurp_file(const std::filesystem::path& path, std::vector<uint8_t>& data);
+bool dump_file(const std::filesystem::path& filename, void const* data, size_t size);
 
 struct reader {
 	reader(void const* p, size_t n) : reader(reinterpret_cast<uint8_t const*>(p), n) {}
