@@ -424,6 +424,18 @@ BUN_DLL_PUBLIC int BunIndexBundleInfo(BunIndex const *idx, int32_t bundle_info_i
     return 0;
 }
 
+BUN_DLL_PUBLIC int BunIndexBundleExistsOnDisk(BunIndex const *idx, int32_t bundle_info_id) {
+    if (!idx || bundle_info_id < 0 || bundle_info_id >= idx->bundle_infos_.size()) {
+        return -1;
+    }
+    auto &bi = idx->bundle_infos_[bundle_info_id];
+    std::string bundle_path = idx->bundle_root_ + "/" + bi.name_ + ".bundle.bin";
+    auto fh = idx->vfs_->open(idx->vfs_, bundle_path.c_str());
+    bool exists = !!fh;
+    idx->vfs_->close(idx->vfs_, fh);
+    return exists ? 0 : 1;
+}
+
 BUN_DLL_PUBLIC int BunIndexFileInfo(BunIndex const *idx, int32_t file_info_id, uint64_t *path_hash,
                                     uint32_t *bundle_index, uint32_t *file_offset, uint32_t *file_size) {
     if (!idx || file_info_id < 0 || file_info_id >= idx->file_infos_.size()) {

@@ -73,9 +73,36 @@ std::shared_ptr<GgpkVfs> open_ggpk(std::filesystem::path ggpk_path, bool mmap_da
 			if (offset + size > (int64_t)f->data_size_) {
 				return -1;
 			}
+#if _WIN32
+            HANDLE fh = CreateFileW(gvfs->path.wstring().c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                                OPEN_EXISTING, 0 /*FILE_FLAG_SEQUENTIAL_SCAN*/, nullptr);
+            if (!fh)
+				return -1;
+            uint8_t *out_ptr = out;
+            LARGE_INTEGER seek_pos{};
+            seek_pos.QuadPart = (uint64_t)(f->data_offset_ + offset);
+            if (!SetFilePointerEx(fh, seek_pos, nullptr, FILE_BEGIN)) {
+				CloseHandle(fh);
+				return -1;
+            }
+            size_t remaining = size;
+            while (remaining) {
+				DWORD read_size = (DWORD)(std::min)(remaining, 1ull << 20);
+				DWORD bytes_read{};
+                BOOL res = ReadFile(fh, out_ptr, read_size, &bytes_read, nullptr);
+                if (!res) {
+					CloseHandle(fh);
+                    return 1;
+                }
+                out_ptr += bytes_read;
+				remaining -= bytes_read;
+            }
+            CloseHandle(fh);
+#else
 			std::ifstream ifs(gvfs->path, std::ios::binary);
 			ifs.seekg(f->data_offset_ + offset);
 			ifs.read((char *)out, size);
+#endif
 			return size;
 		};
 
