@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <filesystem>
+#include <future>
 #include <fstream>
 #include <iostream>
 #include <regex>
@@ -43,6 +44,7 @@ int main(int argc, char *argv[]) {
   std::filesystem::path output_dir;
   bool use_regex = false;
   bool use_mmap = false;
+  bool bundle_mapping = false;
   std::vector<std::string> tail_args;
 
   command = argv[1];
@@ -58,12 +60,23 @@ int main(int argc, char *argv[]) {
     } else if (argv[argi] == "--no-mmap"sv) {
       use_mmap = false;
       ++argi;
+    } else if (argv[argi] == "--bundle-mapping"sv) {
+        bundle_mapping = true;
+        ++argi;
     } else {
       break;
     }
   }
 
   if (command == "list-files"sv) {
+    if (argi < argc) {
+      ggpk_or_steam_dir = argv[argi++];
+    }
+    if (argi != argc) {
+      fprintf(stderr, USAGE);
+      return 1;
+    }
+  } else if (command == "bundle-stats"sv) {
     if (argi < argc) {
       ggpk_or_steam_dir = argv[argi++];
     }
@@ -120,16 +133,70 @@ int main(int argc, char *argv[]) {
         break;
       }
       auto generated = generate_paths(rep_mem + offset, size);
-      for (auto &p : generated) {
-        std::cout << p << std::endl;
+      if (bundle_mapping)
+      {
+          for (auto& p : generated)
+          {
+              int32_t file_idx = BunIndexLookupFileByPath(idx, p.c_str());
+              if (file_idx == -1)
+                  printf("\"%s\": not present\n", p.c_str());
+              else {
+                  uint64_t path_hash{};
+                  uint32_t bundle_index{};
+                  uint32_t file_offset{}, file_size{};
+                  BunIndexFileInfo(idx, file_idx, &path_hash, &bundle_index, &file_offset, &file_size);
+                  auto bundle_name_mem = BunIndexBundleName(idx, bundle_index);
+                  printf("%d,\"%s\",\"%s\"\n", bundle_index, p.c_str(), bundle_name_mem);
+                  BunMemFree(bundle_name_mem);
+              }
+          }
+      } else
+      {
+          for (auto &p : generated) {
+              std::cout << p << std::endl;
+          }
       }
     }
     return 0;
   }
 
+  if (command == "bundle-stats") {
+    struct Tally {
+      size_t count{};
+      size_t unc_size{};
+    };
+
+    Tally missing_bundles, present_bundles, total_bundles;
+    for (int32_t bundle_id = 0; bundle_id < BunIndexBundleCount(idx); ++bundle_id) {
+      char const *name{};
+      uint32_t unc_size{};
+      if (0 == BunIndexBundleInfo(idx, bundle_id, &name, &unc_size)) {
+        auto bundle_mem = BunIndexExtractBundle(idx, bundle_id);
+        if (!bundle_mem)
+        {
+            fprintf(stderr, "Could not extract bundle \"%s\"\n", name);
+        }
+        BunMemFree(bundle_mem);
+        Tally &tally = (BunIndexBundleExistsOnDisk(idx, bundle_id) == 0) ? present_bundles : missing_bundles;
+        ++tally.count;
+        tally.unc_size += unc_size;
+        ++total_bundles.count;
+        total_bundles.unc_size += unc_size;
+      }
+    }
+
+    fprintf(stdout,
+            "%zu bundles missing for %zu bytes uncompressed.\n%zu bundles present for %zu bytes uncompressed.\n%zu bundles total for %zu bytes uncompressed.\n",
+            missing_bundles.count, missing_bundles.unc_size,
+            present_bundles.count, present_bundles.unc_size,
+            total_bundles.count, total_bundles.unc_size);
+    return 0;
+  }
+
   std::vector<std::string> wanted_paths = tail_args;
   if (wanted_paths.empty()) {
-    fprintf(stderr, "No patterns found in command line; reading from stdin, end with EOF (Ctrl-Z + Enter on Windows, Ctrl-D elsewhere):\n");
+    fprintf(stderr, "No patterns found in command line; reading from stdin, end with EOF (Ctrl-Z + Enter on Windows, "
+                    "Ctrl-D elsewhere):\n");
     std::string line;
     while (std::getline(std::cin, line)) {
       wanted_paths.push_back(line);
